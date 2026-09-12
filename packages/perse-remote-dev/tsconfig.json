@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "paths": {
+      "@deepseek-ai/dsh-typert-protocol": ["../../typert-protocol.d.ts"],
+      "@deepseek-ai/schemastery": ["../../schemastery.d.ts"],
+      "perse-remote-dev/remote": ["./lib/typert.remote-client.d.ts"],
+      "perse-remote-dev/types": ["./src/types.ts"]
+    }
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "perse-remote-dev-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build workspace for perse-remote-dev — an out-of-tree DSH remote-development plugin of Persevere with DSH. The installable package lives in packages/perse-remote-dev.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "pretypecheck": "npm run codegen",
+    "typecheck": "tsc -b tsconfig.host.json",
+    "codegen": "node scripts/gen-typert.mjs",
+    "build": "npm run typecheck && npm run codegen && npm run bundle && npm run bundle:client",
+    "bundle": "tsdown",
+    "bundle:client": "tsdown --config tsdown.client.config.ts",
+    "pack": "npm run build && npm pack --workspace perse-remote-dev",
+    "test": "npm run build && node scripts/verify-generated.mjs && node scripts/verify-client-bundle.mjs && node scripts/verify-host-surface.mjs",
+    "verify:generated": "node scripts/verify-generated.mjs",
+    "verify:client": "node scripts/verify-client-bundle.mjs",
+    "verify:surface": "node scripts/verify-host-surface.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-typert-generator": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.2",
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.22.2",
+    "typescript": "6.0.3"
+  }
+}

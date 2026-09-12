@@ -1,0 +1,51 @@
+name: CI
+
+# Plugin-owned CI — mandated by `plugins/docs/ADDING-A-PLUGIN.md` §4:
+# "Commit .github/workflows/ci.yml in the plugin repo running: npm ci,
+#  npm run typecheck, npm run codegen, npm run build, npm test."
+# No workflow, script or config is inherited from the index repo.
+#
+# Note the step order: `npm run typecheck` runs BEFORE `npm run codegen` here,
+# exactly as §4 prescribes. That is only valid because `package.json` defines
+# `pretypecheck: npm run codegen` — the generated
+# `packages/perse-remote-dev/lib/typert.remote-client.d.ts` is an *input* of the
+# typecheck (the client sources reach it through the package tsconfig `paths`
+# plus a namespace merge), so a clean checkout must codegen first.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    name: typecheck → codegen → build → test (Node 24)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Typecheck (pretypecheck generates the Remote d.ts first)
+        run: npm run typecheck
+
+      - name: Codegen
+        run: npm run codegen
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test

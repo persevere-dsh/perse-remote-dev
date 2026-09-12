@@ -1,0 +1,20 @@
+{
+  // Bundler-only tsconfig for `packages/perse-remote-dev/client.js`.
+  //
+  // tsdown forwards its `tsconfig` option straight to rolldown, whose resolver
+  // applies `compilerOptions.paths` BEFORE `resolve.alias`. The package
+  // tsconfig necessarily maps `perse-remote-dev/remote` to the generated
+  // *declaration* file (that is how tsc sees the namespace merge), so pointing
+  // the bundler at it would make rolldown try to bundle a `.d.ts`. This file
+  // therefore carries **no `paths`**: the bundler resolves that specifier
+  // through the `alias` in `tsdown.client.config.ts`, while `tsc` keeps using
+  // `tsconfig.json` and its declaration mappings.
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "paths": {}
+  }
+}
