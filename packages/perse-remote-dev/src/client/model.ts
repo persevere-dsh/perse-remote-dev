@@ -6,10 +6,10 @@
  * Remote call. It is created once per `apply` by the consumer plugin that holds
  * `inject = ['slots', 'remote', 'remote.remoteDev']`, so the call sites
  * below read `ctx.remote.remoteDev.<method>(request)` verbatim with the
- * generated signatures — no `Pick`, no hand-written signature, no wire
+ * generated signatures — no `Pick`, no manually written signature, no wire
  * intermediary.
  *
- * Failure discipline (OFFICIAL-SPEC R8.3/R8.4/R8.5):
+ * Failure discipline:
  *   * results are `RemoteResult<T>`; every branch discriminates on `error.code`;
  *   * no `instanceof`, no `catch` around a Remote call — assembly faults are
  *     supposed to be loud.
@@ -54,7 +54,7 @@ export const STATE_LABEL: Record<RemoteLinkState, string> = {
 /**
  * Flatten one `RemoteFailure` for the UI.
  *
- * Callers discriminate with the canonical `if (!result.ok)` branch (R8.3) —
+ * Callers discriminate with the canonical `if (!result.ok)` branch —
  * `instanceof` is never used, and the branch narrows `error.details` for free.
  * @param error - the failure half of a `RemoteResult`.
  * @returns the UI-shaped failure.
@@ -78,7 +78,7 @@ function failedOutcome<T>(failure: Failure): Outcome<T> {
  * Minimal observable cell: the framework's slot-store contract is not reachable
  * from this workspace, so the model exposes a `getSnapshot`/`subscribe` pair and
  * the components bind it through the inject face's hooks. The instance lives on
- * this per-apply model (object layer), never at module scope (R9.7).
+ * this per-apply model (object layer), never at module scope.
  */
 export class Cell<T> {
   private value: T
@@ -271,8 +271,8 @@ export class RemoteWorkspaceClient {
 
   /**
    * Read the host inventory. `probe` spawns one short ssh per ssh host, so it is
-   * an explicit user action — the host has no events, and the model must not
-   * pretend it has a subscription (HOST-CONCLUSION §4).
+   * an explicit user action — the host has no event stream, and the model must
+   * not pretend it has a subscription.
    * @param options - probe / cache-bypass switches.
    */
   async loadTargets(options: { probe?: boolean; fresh?: boolean } = {}): Promise<void> {
@@ -281,8 +281,7 @@ export class RemoteWorkspaceClient {
     const fresh = options.fresh === true
     // TWO reads, because the host contract splits the inventory:
     //   * `includeAll: false` answers the user's CONFIGURED hosts (the only set
-    //     a probe may touch — the hand-written half deliberately never probed
-    //     hosts the user had not added);
+    //     a probe may touch — hosts the user has not added are never probed);
     //   * `includeAll: true` answers the full `~/.ssh/config` inventory, which
     //     is what the "更多主机（N）" escape counts.
     // Reading only the second one silently drops every configured host, which
@@ -519,7 +518,7 @@ export class RemoteWorkspaceClient {
 
   /**
    * Approve files. Step failures arrive as `ok:false` **values** with a step
-   * trail, not as Remote error codes (HOST-CONCLUSION §3 semantics).
+   * trail, not as Remote error codes.
    * @param files - selected file paths.
    * @param verify - run the target's verification command.
    */

@@ -2,7 +2,7 @@
  * Code-discriminated failure copy.
  *
  * Every branch keys on `error.code` — never on `instanceof`, never on message
- * text (OFFICIAL-SPEC R8.3/R8.4). The vocabulary is the host package's 26
+ * text. The vocabulary is the host package's 26
  * domain codes plus the three protocol carrier codes; an unknown code is shown
  * verbatim so a newer host cannot be silently mislabelled.
  */
@@ -28,7 +28,7 @@ function detailList(details: unknown, key: string): readonly string[] {
  * `location-mismatch` is the documented case: the host signs every path with a
  * per-instance random key, so a profile restart or a stale listing invalidates
  * the proof. Re-listing issues a fresh one — it must not surface as a fatal
- * error (HOST-CONCLUSION §2.3).
+ * error.
  * @param code - the Remote failure code.
  * @returns true when a re-list + retry is the right recovery.
  */

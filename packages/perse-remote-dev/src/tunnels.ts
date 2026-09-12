@@ -1,14 +1,14 @@
 /**
  * Remote-DSH tunnel lifecycle.
  *
- * Carried over semantics: `ssh -N -L 127.0.0.1:<local>:127.0.0.1:<remote>` from
+ * `ssh -N -L 127.0.0.1:<local>:127.0.0.1:<remote>` from
  * a local port probed by *binding* it (binding port 0 would always succeed and
  * turn probing into not-checking), and an address decorated with the remote
  * DSH's current `?token=` — re-read on every open *and* every reuse, because the
  * remote token changes when the remote process restarts.
  *
- * Changed semantics: failures are typed RemoteError codes (the classifier's
- * three classes plus two new ones) instead of free-form strings, and
+ * Failures are typed RemoteError codes (the classifier's
+ * three classes plus two more) instead of free-form strings, and
  * `requireAuthentication` promotes a missing/unverifiable token from a `warning`
  * field into `remote-dev/token-unavailable` carrying the degraded URL.
  */
@@ -35,7 +35,7 @@ export interface TunnelRequest {
    */
   readonly hostId: string
   /**
-   * D-POST-3: the settings record id that opened (or reuses) this tunnel. Multiple
+   * The settings record id that opened (or reuses) this tunnel. Multiple
    * records may share a `fromAlias`, so `hostId` folds them onto the alias and a
    * `closeTunnel(<config id>)` could never find its own tunnel. Keeping the config
    * id as a separate identity lets `closeByHostId` answer to either form.
@@ -64,7 +64,7 @@ interface Tunnel {
   /**
    * Every config-record id that answers to this tunnel. A tunnel opened by config
    * record A may later be reused by config record B (same alias + remote port), so
-   * both ids must be able to close it (D-POST-3).
+   * both ids must be able to close it.
    */
   readonly configIds: Set<string>
   readonly endpoint: SshEndpoint
@@ -135,8 +135,7 @@ export class TunnelManager {
   /**
    * Close every tunnel belonging to one host identity. Accepts either the stable
    * wire identity (`fromAlias`/folded alias, what `open` reports) or a settings
-   * record id, so two records sharing one alias can each be closed by config id
-   * (D-POST-3).
+   * record id, so two records sharing one alias can each be closed by config id.
    * @param hostId - stable host identity or config-record id.
    * @returns whether anything was closed.
    */

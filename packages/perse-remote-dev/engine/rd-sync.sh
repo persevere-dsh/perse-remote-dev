@@ -124,7 +124,7 @@ cmd_m_sync() {
 # ---------- 本地 W 侧 ----------
 
 # apply <wdir> <patch-file>   git apply 直落到 W（干净树语义）→ 仅提交补丁涉及路径
-# 漂移/冲突语义（v0，ARCH §10-3）：任何落盘失败即拒（#ERR_APPLY_CONFLICT），不做自动 3-way 合并。
+# 漂移/冲突语义（v0）：任何落盘失败即拒（#ERR_APPLY_CONFLICT），不做自动 3-way 合并。
 cmd_apply() {
   local w="$1" patch="$2"
   [ -f "$patch" ] || { echo "#ERR_PATCH_MISSING"; exit 7; }

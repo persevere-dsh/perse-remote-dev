@@ -9,23 +9,24 @@
  * Checks
  *   1. `lib/index.js` has **zero** `webServer.register` and zero
  *      `kind: 'prefix'` hits once comment lines are removed.
- *      (Known trap: artifact L916 is the doc comment
- *      "`* \`ctx.webServer.register\` call anywhere in this package: the former
- *      prefix`". A raw `grep webServer` therefore reports 1 and is a false
- *      positive. The judgement is anchored to non-comment lines only, i.e. lines
- *      whose trimmed text does not start with `*`, `//` or `/*`.)
+ *      (Known trap: the host header doc comment names `ctx.webServer.register`
+ *      while stating that this plugin never calls it, so a raw `grep webServer`
+ *      reports 1 and is a false positive. The judgement is anchored to
+ *      non-comment lines only, i.e. lines whose trimmed text does not start with
+ *      `*`, `//` or `/*`.)
  *   2. the peers stay bare specifiers — `from "@deepseek-ai/dsh-typert-protocol"`
  *      and `from "@deepseek-ai/schemastery"` are both visible — and schemastery
  *      is not inlined (no second copy is bundled).
  *   3. the host `inject = […]` list contains only `typert`: never `config` and
- *      never `webServer`. (History: a `'config'` entry parked the plugin forever
- *      at `pending (waiting for service: config)` and made cold start report
- *      `N entries did not activate`.)
+ *      never `webServer`. Either name would reference a service that does not
+ *      exist, which parks the plugin at `pending (waiting for service: <name>)`
+ *      and makes cold start report `N entries did not activate`.
  *   4. `client.js` mentions `webServer` zero times.
  *   5. the remote `mkdirRemote` body keeps the local mapping: a pre-existing
  *      directory is its own status (`remote-dev/directory-exists`) and any other
  *      failure carries `mkdir`'s real stderr as `details.reason`, never the
- *      internal shell sentinel (`2>/dev/null` + `ERR_MKDIR` is the D1 defect).
+ *      internal shell sentinel (`2>/dev/null` + `ERR_MKDIR` discards the real
+ *      failure reason).
  *
  * Usage
  *   node scripts/verify-host-surface.mjs [--host <path>] [--client <path>]
@@ -165,7 +166,7 @@ if (!existsSync(options.host)) {
   )
 }
 
-// --- remote directory creation (D1) -------------------------------------------
+// --- remote directory creation (mkdir) ----------------------------------------
 // The remote mkdir branch must mirror the local one: an existing *directory* is
 // its own outcome (`remote-dev/directory-exists`, same as local `EEXIST`), and
 // every other failure must carry `mkdir`'s real stderr as `details.reason` —

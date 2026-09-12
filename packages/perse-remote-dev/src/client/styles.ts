@@ -2,14 +2,14 @@
  * Style injection for the browser half.
  *
  * The official preset would compile CSS Modules with lightningcss; this
- * out-of-tree bundle cannot reach that preset (OFFICIAL-SPEC R5.8), so the
- * client lane ships one plain stylesheet as a tagged `<style>` element, exactly
- * as the dynamic-package guidance prescribes (`scripts/gen-client-catalog.ts`:
- * "build markup with React.createElement and ship CSS through styles.insert").
+ * out-of-tree bundle cannot reach that preset, so the client lane ships one plain
+ * stylesheet as a tagged `<style>` element, following the dynamic-package
+ * guidance: build markup with `React.createElement` and ship CSS through
+ * `styles.insert`.
  *
- * Every colour comes from a real DSH semantic token (`--dsw-alias-*`). The
- * earlier hand-written half shipped `--dsw-border`/`--dsw-accent`, which do not
- * exist, so inputs rendered borderless — that defect is not carried over.
+ * Every colour comes from a real DSH semantic token (`--dsw-alias-*`). Tokens
+ * such as `--dsw-border`/`--dsw-accent` do not exist, so inputs must not use
+ * them (they would render borderless).
  */
 
 /** `id` of the single injected stylesheet element. */

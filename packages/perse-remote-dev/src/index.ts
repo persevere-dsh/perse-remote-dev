@@ -1,24 +1,22 @@
 /**
  * `perse-remote-dev` host face — a typed Remote owner.
  *
- * Namespace: `remoteDev` (service key `remoteDev`, same name on the
- * wire). Every capability of the former 14 hand-written `/remote-dev/**`
- * HTTP routes is expressed as a `@Remote` method over package-owned JSON types,
- * served inside the Connection `/api` trust fence. There is deliberately **no**
- * `ctx.webServer.register` call anywhere in this package: the former prefix
- * routes were outside the authentication fence, and moving the handlers into
- * `@Remote` while keeping a self-made entry point would have reproduced the
- * exact "authentication migration illusion" the analysis warned about.
+ * Namespace: `remoteDev` (service key `remoteDev`, same name on the wire).
+ * Every capability is expressed as a `@Remote` method over package-owned JSON
+ * types, served inside the Connection `/api` trust fence. There is deliberately
+ * **no** `ctx.webServer.register` call anywhere in this package: a self-made HTTP
+ * route would sit outside the authentication fence, so a handler reachable both
+ * there and through `@Remote` would present a second, unfenced entry point.
  *
- * Reused semantics (carried over verbatim, see the individual modules):
- * base64 ssh argv, `~/.ssh/config` alias resolution, the tunnel-failure
- * classifier, the rd-core engine protocol, the settings registration pattern,
- * and the path/name assertions.
+ * Shared semantics (each module documents its own): base64 ssh argv,
+ * `~/.ssh/config` alias resolution, the tunnel-failure classifier, the rd-core
+ * engine protocol, the settings registration pattern, and the path/name
+ * assertions.
  *
- * Rewritten: the HTTP dispatcher and `sendJson`, the error surface (`RemoteError`
- * codes instead of hand-built `{error}` bodies with everything folded into 400),
- * the tunnel registry's lifecycle, and identity/path semantics (a host-issued
- * proof binds every path to the host that produced it).
+ * The error surface is `RemoteError` codes rather than hand-built `{error}`
+ * bodies with everything folded into 400; the tunnel registry owns its
+ * lifecycle; and identity/path semantics are host-issued — a proof binds every
+ * path to the host that produced it.
  */
 
 import { execFile } from 'node:child_process'
@@ -691,9 +689,9 @@ export class RemoteWorkspaceService extends TypertRemoteService {
 
   /**
    * Runtime self-attestation: which endpoints this live instance carries, and a
-   * content hash of the loaded artifacts. The former deployment drifted
-   * (source deleted from disk, routes still served from memory) with no way to
-   * tell; this is the observable that makes that drift detectable.
+   * content hash of the loaded artifacts. A deployment can drift — source deleted
+   * from disk while the process keeps serving the already-loaded artifacts — with
+   * no way to tell; this is the observable that makes that drift detectable.
    * @param request - whether to include the endpoint list.
    * @param signal - carrier cancellation.
    */
@@ -746,7 +744,7 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     return { hosts: configured, migrated: false }
   }
 
-  /** The effective target chain, exactly the former `resolveTargets()` semantics. */
+  /** The effective target chain: `hosts[0]` plus the `targets[]`/scalar fallbacks, with required fields collected in `missing`. */
   private resolveChain(): TargetChain {
     const document = this.readDocument()
     const { hosts } = this.configuredHosts()
@@ -769,17 +767,17 @@ export class RemoteWorkspaceService extends TypertRemoteService {
 
   /** Persist the project path (and remember it on the host record). */
   private async rememberProject(resolved: SshResolution, path: string): Promise<boolean> {
-    // D-HOST-2: a `remember:true` request must never report `saved:true` without an actual write.
-    // A target that is not part of the configured host records (the `~/.ssh/config` alias case the
-    // directory flow offers) has no record to update, so report `false` instead of the former silent
-    // no-op. Auto-registering it into `document.hosts` would erase the configured-vs-alias boundary
-    // that `configuredOnly` relies on, so that is deliberately not done.
-    // D-HOST-1: `record.projectPath` is the *local* W (the settings form stores the user's working
-    // copy there, and `resolveChain` reads it as `RemoteReviewTarget.projectPath`), while
-    // `openProject` receives a *remote* path from the host-issued location. Writing that remote path
-    // into `projectPath` handed it to the local-W consumers. The remembered remote project is
-    // therefore persisted on the host record's `projects[]` only; `projectPath` keeps its single
-    // local-W meaning, so a remote path can never leak into the local-W chain.
+    // A `remember:true` request must never report `saved:true` without an actual write. A target
+    // that is not part of the configured host records (the `~/.ssh/config` alias case the
+    // directory flow offers) has no record to update, so report `false`. Auto-registering it into
+    // `document.hosts` would erase the configured-vs-alias boundary that `configuredOnly` relies
+    // on, so that is deliberately not done.
+    // `record.projectPath` is the *local* W (the settings form stores the user's working copy
+    // there, and `resolveChain` reads it as `RemoteReviewTarget.projectPath`), while
+    // `openProject` receives a *remote* path from the host-issued location. Writing that remote
+    // path into `projectPath` would hand it to the local-W consumers. The remembered remote
+    // project is therefore persisted on the host record's `projects[]` only; `projectPath` keeps
+    // its single local-W meaning, so a remote path can never leak into the local-W chain.
     const scope = this.requireScope()
     const { hosts } = this.configuredHosts()
     const target = resolved.settings !== undefined ? stableIdOf(resolved.settings) : resolved.host
@@ -890,17 +888,17 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     })
   }
 
-  // ── target resolution (defect fix: direct-address hosts use the real ssh target) ──
+  // ── target resolution (the ssh target, never the settings id) ─────────────
 
   /**
    * Resolve one wire identity to a concrete target.
    *
    * `hostId` is matched against a configured record's id *and* its `fromAlias`,
    * then against `~/.ssh/config` aliases. The ssh command line always uses
-   * {@link sshTargetOf}: `fromAlias` when imported, otherwise `user@address`.
-   * The former half passed the configured **id** to ssh for direct-address
-   * hosts, so exactly the hosts that were configured by address could never be
-   * probed or browsed.
+   * {@link sshTargetOf}: `fromAlias` when imported, otherwise `user@address`. A
+   * direct-address host's settings **id** is not an ssh target at all, so passing
+   * it would make exactly the hosts configured by address impossible to probe or
+   * browse.
    */
   private async endpointFor(hostId: string): Promise<TargetResolution> {
     const id = String(hostId || '')
@@ -1109,16 +1107,17 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   ): Promise<{ base: string; head: string; dirty: number; missing: boolean }> {
     signal.throwIfAborted()
     const hub = resolved.target.hub
-    // D-POST-1: this script runs on the *remote* host, so `$RWS_PATH` must be the
-    // remote mirror M (`mDir`). `projectPath` is the contract's *local* W (the tree
-    // the engine applies to), which never exists on the remote and would make
+    // This script runs on the *remote* host, so `$RWS_PATH` must be the remote
+    // mirror M (`mDir`). `projectPath` is the *local* W (the tree the engine
+    // applies to), which never exists on the remote and would make
     // `missing=true`/`head` empty on every valid target.
     const mDir = resolved.target.mDir
     const script = DECODE_PATH + 'RWS_HUB=$(printf %s "$2" | base64 -d) || exit 9\n' + [
-      // D-POST-2: `git rev-parse <ref>` *echoes the literal ref* when it does not
-      // exist (exit 128, stderr swallowed), so the old guard could not see a hub
-      // that is a valid bare repo but has no `rd-base`. `--verify --quiet` resolves
-      // only a real ref and prints nothing otherwise, which is what the guard reads.
+      // `git rev-parse <ref>` *echoes the literal ref* when that ref does not
+      // exist (exit 128, stderr swallowed), so a guard that reads its output
+      // cannot distinguish a valid bare repo without `rd-base` from a resolved
+      // ref. `--verify --quiet` resolves only a real ref and prints nothing
+      // otherwise, which is what the guard reads.
       'printf "BASE:%s\\n" "$(git --git-dir="$RWS_HUB" rev-parse --verify --quiet refs/heads/rd-base 2>/dev/null)"',
       'printf "HEAD:%s\\n" "$(git -C "$RWS_PATH" rev-parse HEAD 2>/dev/null)"',
       'printf "DIRTY:%s\\n" "$(git -C "$RWS_PATH" status --porcelain 2>/dev/null | wc -l | tr -d " ")"',

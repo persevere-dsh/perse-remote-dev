@@ -3,7 +3,7 @@
  *
  * Why this file exists
  * --------------------
- * R1 §4.4 hard constraint 2: the plugin must NOT carry its own runtime copy of
+ * The plugin must NOT carry its own runtime copy of
  * `@deepseek-ai/dsh-typert-protocol` — a second instance of `TypertRemoteService`
  * (and therefore of the Cordis `Service` base it extends) silently disables the
  * Remote layer. So the package declares it only as a peerDependency and the
@@ -11,10 +11,9 @@
  *
  * The Typert generator still has to *see* the protocol's types, though, both to
  * recognise `TypertRemoteService`/`@Remote` (`analyzer.ts` `isTypeMetaSymbol`)
- * and to typecheck `src/`. The upstream generator fixture solves this the same
- * way (`packages/typert/generator/tests/fixtures/remote-model/typert-protocol.d.ts`),
- * and the generator's `isTypeMetaSymbol` explicitly accepts the ambient
- * `declare module '<name>'` form.
+ * and to typecheck `src/`. The generator's `isTypeMetaSymbol` explicitly accepts
+ * the ambient `declare module '<name>'` form, which is the same technique its own
+ * fixtures use.
  *
  * Consequently this file is a *declaration* only: it is never emitted, never
  * imported at runtime, and never shipped (`files` in the package manifest does
@@ -22,8 +21,8 @@
  * `@deepseek-ai/dsh-typert-protocol@0.1.5-rc.2` surface that this package uses.
  *
  * Honest limitation: because this is a hand-maintained stub, a signature drift
- * in the real protocol is caught at runtime, not by `tsc`. See the evidence
- * report for the alternative (install the peer locally and accept a duplicate).
+ * in the real protocol is caught at runtime, not by `tsc`. The alternative is to
+ * install the peer locally and accept a duplicate instance at runtime.
  */
 declare module '@deepseek-ai/dsh-typert-protocol' {
   /** Type-level association between a Host object and its wire identity. */

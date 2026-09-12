@@ -1,5 +1,5 @@
 /**
- * Reproducible Typert codegen (R1 §4.2 path A1 / Q2 ③-b).
+ * Reproducible Typert codegen.
  *
  * Calls the PUBLISHED `@deepseek-ai/dsh-typert-generator` directly instead of
  * the repo's tsdown plugin, so the build is self-contained and never touches the
@@ -7,8 +7,8 @@
  * it refuses to emit unless `exports["./typert"]` / `exports["./remote"]` and
  * `files[]` already match the exact paths it writes.
  *
- * Artifacts, exactly as `<repo>/packages/typert/generator/src/tsdown-plugin.ts#emitArtifacts`
- * names them, and only ever under `<pkg>/lib/` (never `src/`):
+ * Artifacts, named as the generator emits them, and only ever under `<pkg>/lib/`
+ * (never `src/`):
  *
  *   lib/typert.host.js
  *   lib/typert.host.d.ts

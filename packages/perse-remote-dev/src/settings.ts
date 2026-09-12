@@ -1,15 +1,14 @@
 /**
  * Settings seam for the host face.
  *
- * The persisted truth stays the `remote-dev` namespace of `$DSH_HOME/settings.yaml`
- * (registered through the official `ctx.inject(['settings'], …)` +
- * `scope.register(ns, schema)` + effect-disposal pattern, carried over from the
- * hand-written half). The home-grown zero-dependency schema shim is gone: the
- * seam takes a real schemastery schema instance, exactly like every official
- * consumer, while the Typert artifact pipeline keeps zod v4.
+ * The persisted truth stays the `remote-dev` namespace of `$DSH_HOME/settings.yaml`,
+ * registered through the `ctx.inject(['settings'], …)` +
+ * `scope.register(ns, schema)` + effect-disposal pattern. The seam takes a real
+ * schemastery schema instance, exactly like every official consumer, while the
+ * Typert artifact pipeline keeps zod v4.
  *
- * The `enginePath` default defect is fixed in {@link resolveEnginePath}: there is
- * no silently-undefined default any more.
+ * `resolveEnginePath` has no silently-undefined default: an unset `enginePath`
+ * falls back to the engine bundled in `engine/`.
  */
 
 import { homedir } from 'node:os'

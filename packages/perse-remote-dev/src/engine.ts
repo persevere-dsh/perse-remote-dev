@@ -1,13 +1,12 @@
 /**
- * The rd-core engine contract, carried over from the hand-written host half.
+ * The rd-core engine contract.
  *
  * The calling shape (`bash <enginePath> <args>` with `RD_SSH` in the
  * environment) and the `#FILES / #DIFF / #END` output protocol are the
- * *engine's* contract, not DSH's, so they are preserved verbatim. Only the
- * error surface changed: a missing engine path is now an explicit typed
- * failure instead of `execFile('bash', [undefined, …])` — the old default table
- * had no `enginePath` key, so the engine always ran with an undefined script
- * and every `/review/*` call died as a TypeError folded into a generic 400.
+ * *engine's* contract, not DSH's, so they are preserved verbatim. The error
+ * surface is typed: an `enginePath` that resolves to no script is reported as an
+ * explicit typed failure, because launching `execFile('bash', [undefined, …])`
+ * surfaces only as a TypeError folded into a generic 400.
  *
  * Default engine location: when `remote-dev.enginePath` is left empty the host
  * falls back to the engine bundled with this package (`<pkg>/engine/rd-sync.sh`,

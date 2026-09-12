@@ -56,9 +56,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'remote-dev/location-invalid': { readonly path: string }
     /**
      * The host-issued location proof does not cover this exact (host identity,
-     * path) pair. This is the host-side refusal that replaces the former
-     * client-only race guards: a path listed on host A can never be committed
-     * against host B.
+     * path) pair: a path listed on host A can never be committed against host B,
+     * because the host — not the client — refuses the mismatched pair.
      */
     'remote-dev/location-mismatch': {
       readonly hostId: string
@@ -96,7 +95,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly missing: readonly string[]
       readonly hint: string
     }
-    /** The rd-core engine path is unset. Previously this became `bash [undefined]`. */
+    /** The rd-core engine path is unset and no bundled engine resolved. */
     'remote-dev/engine-unconfigured': {}
     /** The rd-core engine exited non-zero for a step that must succeed first. */
     'remote-dev/engine-failed': {

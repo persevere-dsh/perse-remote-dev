@@ -41,7 +41,7 @@ const WORKSPACE_ROOT = resolve(HERE, '..')
 const DEFAULT_CLIENT = resolve(WORKSPACE_ROOT, 'packages', 'perse-remote-dev', 'client.js')
 const DEFAULT_CONFIG = resolve(WORKSPACE_ROOT, 'tsdown.client.config.ts')
 
-/** Frozen shell module table (OFFICIAL-SPEC R5.4) — must equal the config's copy. */
+/** Frozen shell module table — must equal the config's copy. */
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',

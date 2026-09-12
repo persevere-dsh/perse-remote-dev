@@ -26,8 +26,9 @@ export default defineConfig({
   // Node platform otherwise forces `.mjs`; the published entry must be `lib/index.js`
   // next to the generated `lib/typert.host.js` (both are ESM via "type": "module").
   fixedExtension: false,
-  // Runtime peers must stay bare specifiers: the host supplies its own instances
-  // (R1 §4.4 hard constraint 2) and the profile resolves `zod` from its farm.
+  // Runtime peers must stay bare specifiers: the host must supply the same
+  // module instance the plugin sees (a second copy silently disables the Remote
+  // layer), and the profile resolves `zod` from its farm.
   // `@deepseek-ai/schemastery` must stay a bare specifier too: the host provides
   // the single instance from `~/.dsh/profiles/node_modules` (a flat symlink farm
   // pointing at the dsh install), so the bundle must not carry a second copy.

@@ -59,7 +59,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   /**
    * The Client Remote facade. `$mount` is the protocol's public mounting API —
    * the exact call the official `@deepseek-ai/dsh-api-remotes/client` assembly
-   * makes (OFFICIAL-SPEC R7.1/R7.2). Namespace methods arrive through
+   * makes. Namespace methods arrive through
    * `TypertRemoteNamespaceMap`, merged by the generated host artifact.
    */
   export interface TypertClientRemote extends TypertRemoteNamespaceMap {

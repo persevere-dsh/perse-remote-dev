@@ -5,11 +5,10 @@
 // lane (workspace entry + `lib/index.js`) and must stay untouched by the browser
 // lane. The client bundle gets its own config so the two never share a run.
 //
-// WHY this replicates a preset by hand: the official shared preset
-// `packages/client/tsdown.client.ts` (`clientBundle()`) is NOT published — the
-// directory is not a workspace package, has no package.json, and is in no
-// exports (OFFICIAL-SPEC R5.8). The three strings below (`banner`, `intro`,
-// `footer`) are that preset's literal closure-factory contract (R5.6), verified
+// WHY this replicates a preset by hand: the official shared preset's
+// `clientBundle()` is NOT published — the directory is not a workspace package,
+// has no package.json, and is in no exports. The three strings below (`banner`,
+// `intro`, `footer`) are that preset's literal closure-factory contract, verified
 // against an installed official bundle
 // (`@deepseek-ai/dsh-client-ui-workspace/lib/client.js`):
 //
@@ -25,18 +24,19 @@
 //     }
 //   });
 //
-// Externals are exactly the shell baseline `PLATFORM_MODULES` (R5.4); the
+// Externals are exactly the shell baseline `PLATFORM_MODULES`; the
 // baseline is implicit for every dynamic bundle, so the package manifest
 // declares no `dsh.client.external`. Everything else — including the generated
 // contribution `perse-remote-dev/remote` and its `zod` — is privately bundled
-// (silence = private copy, R5.5 rule 1).
+// (silence = private copy, so a dependency absent from the externals list is
+// inlined).
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
 
 /** The browser module also stamps this id; it must equal `manifest.name`. */
 const PACKAGE_ID = 'perse-remote-dev'
 
-/** Frozen shell module table (OFFICIAL-SPEC R5.4, verbatim). */
+/** Frozen shell module table (verbatim). */
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',

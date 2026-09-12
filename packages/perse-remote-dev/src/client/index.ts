@@ -7,9 +7,9 @@
  *   1. {@link apply} (the Loader entry, `inject = ['remote']`) mirrors the
  *      official assembly in `@deepseek-ai/dsh-api-remotes/client`: it mounts the
  *      frozen host package's generated contribution through the protocol's
- *      public `ctx.remote.$mount()` API. The out-of-tree workspace has no
- *      official assembly seam (OFFICIAL-SPEC R7.1/R7.4), so this row *is* the
- *      seam — the same call the official list makes, not a workaround.
+ *      public `ctx.remote.$mount()` API. The out-of-tree workspace gets no
+ *      official assembly row, so this row *is* the seam — the same call the
+ *      official list makes, not a workaround.
  *
  *   2. {@link applyUi} (`inject = ['slots', 'remote', 'remote.remoteDev']`)
  *      owns every call site and every slot registration. It is a nested plugin
@@ -19,10 +19,10 @@
  *      guaranteed PENDING, i.e. exactly the "pending (waiting for service)"
  *      cold-start failure this delivery must not produce.
  *
- * Call discipline (OFFICIAL-SPEC §8): every method call is written
+ * Call discipline: every method call is written
  * `ctx.remote.remoteDev.<method>(request)` with its generated signature;
  * results are discriminated on `error.code`; no `instanceof`, no defensive
- * `catch`, no narrowed or hand-written signature.
+ * `catch`, no narrowed or manually written signature.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import remoteDevRemote from 'perse-remote-dev/remote'
@@ -33,10 +33,10 @@ import { RemoteWorkspaceClient } from './model.ts'
 import { failureText } from './messages.ts'
 import { ensureStyles } from './styles.ts'
 
-/** Log prefix carried over from the hand-written half (acceptance O-9). */
+/** Log prefix for every line this plugin prints. */
 const LOG = '[perse-remote-dev]'
 
-/** Slot names — the frozen five (TYPED-REMOTE-CURRENT-STATE §3.2). */
+/** Slot names — the five slots this plugin registers. */
 const SLOT_HEADER = 'conversation.session.header.actions'
 const SLOT_SETTINGS_SECTION = 'settings.section'
 const SLOT_FLOW_HERO = 'conversation.hero.workspace.directoryFlow'
@@ -79,8 +79,8 @@ function applyUi(ctx: Context): void {
   const client = new RemoteWorkspaceClient(ctx)
 
   // Cheap activation-time reads. `listTargets` here is probe-free: link state is
-  // never invented, and the host has no events to subscribe to
-  // (HOST-CONCLUSION §4), so a real probe is an explicit user action.
+  // never invented, and the host has no event stream to subscribe to, so a real
+  // probe is an explicit user action.
   void client.loadHostFace()
   void client.loadTargets()
   void client.loadConfig()

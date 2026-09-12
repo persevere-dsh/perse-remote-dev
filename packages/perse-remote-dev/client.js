@@ -5585,7 +5585,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 484,
+						"line": 482,
 						"column": 3
 					}
 				},
@@ -5613,7 +5613,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 372,
+						"line": 370,
 						"column": 9
 					}
 				},
@@ -5641,7 +5641,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 701,
+						"line": 699,
 						"column": 9
 					}
 				},
@@ -5669,7 +5669,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 338,
+						"line": 336,
 						"column": 9
 					}
 				},
@@ -5697,7 +5697,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 223,
+						"line": 221,
 						"column": 9
 					}
 				},
@@ -5725,7 +5725,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 472,
+						"line": 470,
 						"column": 3
 					}
 				},
@@ -5753,7 +5753,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 402,
+						"line": 400,
 						"column": 9
 					}
 				},
@@ -5781,7 +5781,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 446,
+						"line": 444,
 						"column": 9
 					}
 				},
@@ -5809,7 +5809,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 265,
+						"line": 263,
 						"column": 9
 					}
 				},
@@ -5837,7 +5837,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 548,
+						"line": 546,
 						"column": 9
 					}
 				},
@@ -5865,7 +5865,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 522,
+						"line": 520,
 						"column": 9
 					}
 				},
@@ -5893,7 +5893,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 650,
+						"line": 648,
 						"column": 9
 					}
 				},
@@ -5921,7 +5921,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 673,
+						"line": 671,
 						"column": 9
 					}
 				},
@@ -5949,7 +5949,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 503,
+						"line": 501,
 						"column": 9
 					}
 				},
@@ -5977,7 +5977,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 300,
+						"line": 298,
 						"column": 9
 					}
 				}
@@ -5996,7 +5996,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/**
 		* Flatten one `RemoteFailure` for the UI.
 		*
-		* Callers discriminate with the canonical `if (!result.ok)` branch (R8.3) —
+		* Callers discriminate with the canonical `if (!result.ok)` branch —
 		* `instanceof` is never used, and the branch narrows `error.details` for free.
 		* @param error - the failure half of a `RemoteResult`.
 		* @returns the UI-shaped failure.
@@ -6024,7 +6024,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* Minimal observable cell: the framework's slot-store contract is not reachable
 		* from this workspace, so the model exposes a `getSnapshot`/`subscribe` pair and
 		* the components bind it through the inject face's hooks. The instance lives on
-		* this per-apply model (object layer), never at module scope (R9.7).
+		* this per-apply model (object layer), never at module scope.
 		*/
 		var Cell = class {
 			value;
@@ -6156,8 +6156,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			/**
 			* Read the host inventory. `probe` spawns one short ssh per ssh host, so it is
-			* an explicit user action — the host has no events, and the model must not
-			* pretend it has a subscription (HOST-CONCLUSION §4).
+			* an explicit user action — the host has no event stream, and the model must
+			* not pretend it has a subscription.
 			* @param options - probe / cache-bypass switches.
 			*/
 			async loadTargets(options = {}) {
@@ -6443,7 +6443,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			/**
 			* Approve files. Step failures arrive as `ok:false` **values** with a step
-			* trail, not as Remote error codes (HOST-CONCLUSION §3 semantics).
+			* trail, not as Remote error codes.
 			* @param files - selected file paths.
 			* @param verify - run the target's verification command.
 			*/
@@ -6544,14 +6544,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/**
 		* Browser-half components.
 		*
-		* Components never touch `ctx` (OFFICIAL-SPEC R9.4): every read comes from a
+		* Components never touch `ctx`: every read comes from a
 		* hook projected by the registration's `inject` factory and every write goes
 		* through an action on that same face. All markup is `React.createElement`
 		* because the dynamic-package shape cannot import the design-system components.
 		*
-		* The `data-rws-*` attributes are the frozen public test contract
-		* (TYPED-REMOTE-ACCEPTANCE §0.3/§5.1); the extra `data-testid` seats are
-		* additive and never replace them.
+		* The `data-rws-*` attributes are the frozen public test contract; the extra
+		* `data-testid` seats are additive and never replace them.
 		*/
 		const h = react.createElement;
 		/** Bind a model cell to a component-local snapshot state. */
@@ -6570,12 +6569,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/**
 		* Session-header host badge.
 		*
-		* The hand-written half hard-coded `find(id === 'local')`, so the badge said
-		* "本机" forever. It now renders the host that the **effective configuration
+		* Renders the host that the **effective configuration
 		* resolves to** (real `readConfiguration` data) joined with that host's live
 		* `listTargets` link state — falling back to the local view only when nothing
-		* is configured. There is no session→host identity in the frozen host face, so
-		* this is deliberately "the configured target", never a fabricated session fact.
+		* is configured. A hard-coded `find(id === 'local')` would pin the badge to 本机
+		* forever, which is exactly what this component exists to avoid. There is no
+		* session→host identity in the host face, so this is deliberately "the
+		* configured target", never a fabricated session fact.
 		* @param props - badge face.
 		* @returns badge element.
 		*/
@@ -6875,7 +6875,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				})), h("label", { className: "rws-fld" }, h("span", { className: "rws-fld-label" }, "rd-core 引擎路径（可选）"), h("input", {
 					className: "rws-fld-input",
 					value: scalars.enginePath,
-					placeholder: "~/.dsh/rd-core/rd-sync.sh",
+					placeholder: "留空则使用包内引擎",
 					"data-testid": "rws.settings.field.enginePath",
 					onChange: (event) => setScalars({
 						...scalars,
@@ -7250,11 +7250,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/**
 		* Batch review overlay.
 		*
-		* There is deliberately **no** fetch on mount: the analysis recorded an
-		* unresolved render-loop incident caused by "async arrival writes state" inside
-		* this very slot (G-05, CURRENT-STATE §10.2), and a batch read is an ssh +
-		* engine round trip. The launcher only renders; the user's click opens the
-		* panel and is what triggers the read.
+		* There is deliberately **no** fetch on mount: a mount-time read whose async
+		* arrival writes state would drive a render loop inside this very slot, and a
+		* batch read is an ssh + engine round trip. The launcher only renders; the user's
+		* click opens the panel and is what triggers the read.
 		* @param props - review face.
 		* @returns launcher, or the open panel.
 		*/
@@ -7464,14 +7463,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* Style injection for the browser half.
 		*
 		* The official preset would compile CSS Modules with lightningcss; this
-		* out-of-tree bundle cannot reach that preset (OFFICIAL-SPEC R5.8), so the
-		* client lane ships one plain stylesheet as a tagged `<style>` element, exactly
-		* as the dynamic-package guidance prescribes (`scripts/gen-client-catalog.ts`:
-		* "build markup with React.createElement and ship CSS through styles.insert").
+		* out-of-tree bundle cannot reach that preset, so the client lane ships one plain
+		* stylesheet as a tagged `<style>` element, following the dynamic-package
+		* guidance: build markup with `React.createElement` and ship CSS through
+		* `styles.insert`.
 		*
-		* Every colour comes from a real DSH semantic token (`--dsw-alias-*`). The
-		* earlier hand-written half shipped `--dsw-border`/`--dsw-accent`, which do not
-		* exist, so inputs rendered borderless — that defect is not carried over.
+		* Every colour comes from a real DSH semantic token (`--dsw-alias-*`). Tokens
+		* such as `--dsw-border`/`--dsw-accent` do not exist, so inputs must not use
+		* them (they would render borderless).
 		*/
 		/** `id` of the single injected stylesheet element. */
 		const STYLE_ID = "perse-remote-dev-style";
@@ -7583,9 +7582,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		//#endregion
 		//#region packages/perse-remote-dev/src/client/index.ts
-		/** Log prefix carried over from the hand-written half (acceptance O-9). */
+		/** Log prefix for every line this plugin prints. */
 		const LOG = "[perse-remote-dev]";
-		/** Slot names — the frozen five (TYPED-REMOTE-CURRENT-STATE §3.2). */
+		/** Slot names — the five slots this plugin registers. */
 		const SLOT_HEADER = "conversation.session.header.actions";
 		const SLOT_SETTINGS_SECTION = "settings.section";
 		const SLOT_FLOW_HERO = "conversation.hero.workspace.directoryFlow";

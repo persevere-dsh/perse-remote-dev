@@ -1,14 +1,13 @@
 /**
  * Browser-half components.
  *
- * Components never touch `ctx` (OFFICIAL-SPEC R9.4): every read comes from a
+ * Components never touch `ctx`: every read comes from a
  * hook projected by the registration's `inject` factory and every write goes
  * through an action on that same face. All markup is `React.createElement`
  * because the dynamic-package shape cannot import the design-system components.
  *
- * The `data-rws-*` attributes are the frozen public test contract
- * (TYPED-REMOTE-ACCEPTANCE §0.3/§5.1); the extra `data-testid` seats are
- * additive and never replace them.
+ * The `data-rws-*` attributes are the frozen public test contract; the extra
+ * `data-testid` seats are additive and never replace them.
  */
 import * as React from 'react'
 import type {
@@ -61,12 +60,13 @@ export interface BadgeFace {
 /**
  * Session-header host badge.
  *
- * The hand-written half hard-coded `find(id === 'local')`, so the badge said
- * "本机" forever. It now renders the host that the **effective configuration
+ * Renders the host that the **effective configuration
  * resolves to** (real `readConfiguration` data) joined with that host's live
  * `listTargets` link state — falling back to the local view only when nothing
- * is configured. There is no session→host identity in the frozen host face, so
- * this is deliberately "the configured target", never a fabricated session fact.
+ * is configured. A hard-coded `find(id === 'local')` would pin the badge to 本机
+ * forever, which is exactly what this component exists to avoid. There is no
+ * session→host identity in the host face, so this is deliberately "the
+ * configured target", never a fabricated session fact.
  * @param props - badge face.
  * @returns badge element.
  */
@@ -171,8 +171,8 @@ export function RemoteDevSection(props: SectionFace): unknown {
   const seeded = React.useRef(false)
 
   // No fetch on mount: the consumer plugin already performed the activation-time
-  // reads, and a slot that re-reads on every mount is the shape of the G-05
-  // render-loop incident. Refresh stays an explicit user action.
+  // reads, and a slot that re-reads on every mount can drive a render loop.
+  // Refresh stays an explicit user action.
   const value = config.value
   React.useEffect(() => {
     if (value === null || seeded.current) return
@@ -388,7 +388,7 @@ export function RemoteDevSection(props: SectionFace): unknown {
         h('input', {
           className: 'rws-fld-input',
           value: scalars.enginePath,
-          placeholder: '~/.dsh/rd-core/rd-sync.sh',
+          placeholder: '留空则使用包内引擎',
           'data-testid': 'rws.settings.field.enginePath',
           onChange: (event: { target: { value: string } }) => setScalars({ ...scalars, enginePath: event.target.value }),
         }))))
@@ -805,11 +805,10 @@ function DiffView(text: string): unknown {
 /**
  * Batch review overlay.
  *
- * There is deliberately **no** fetch on mount: the analysis recorded an
- * unresolved render-loop incident caused by "async arrival writes state" inside
- * this very slot (G-05, CURRENT-STATE §10.2), and a batch read is an ssh +
- * engine round trip. The launcher only renders; the user's click opens the
- * panel and is what triggers the read.
+ * There is deliberately **no** fetch on mount: a mount-time read whose async
+ * arrival writes state would drive a render loop inside this very slot, and a
+ * batch read is an ssh + engine round trip. The launcher only renders; the user's
+ * click opens the panel and is what triggers the read.
  * @param props - review face.
  * @returns launcher, or the open panel.
  */

@@ -1,6 +1,6 @@
 /**
- * Reusable ssh transport primitives, carried over from the hand-written host
- * half (`remote-dev/perse-remote-dev/lib/index.js` §10.1 reusable assets):
+ * Reusable ssh transport primitives; the host half shares the same base64-argv
+ * convention through this module:
  *
  *   · `~/.ssh/config` parsing + endpoint folding (same endpoint, several aliases);
  *   · the base64-argv convention — ssh does not forward arbitrary environment
@@ -8,8 +8,6 @@
  *     decoded inside the script; base64 carries no shell metacharacters;
  *   · the tunnel-failure classifier, whose three classes map one-to-one onto
  *     RemoteError codes.
- *
- * Semantics are preserved deliberately: only the plumbing around them changed.
  */
 
 import { execFile } from 'node:child_process'
@@ -41,9 +39,9 @@ export interface FoldedSshHost {
  * command line: an alias when the user imported one (the alias carries its own
  * jump host and identity), otherwise `user@address`.
  *
- * This is the corrected form of the former defect where the settings *id* was
- * passed to ssh for direct-address hosts, so probing/browsing never worked for
- * a host that was configured by address instead of imported from ssh config.
+ * The settings **id** is deliberately not a target: for a host configured by
+ * address it is not resolvable by ssh, so probing and browsing must use the real
+ * target described above.
  */
 export interface SshEndpoint {
   /** Stable wire identity (`local` never becomes an SshEndpoint). */

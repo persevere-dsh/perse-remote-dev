@@ -1,10 +1,9 @@
 /**
  * Path/name safety plus the host-issued identity proof.
  *
- * The former hand-written half relied on three client-side race guards to keep a
- * path listed on host A from being committed against host B (a real incident is
- * recorded in `UX-PATH-AND-TESTCASES.v1.md:90`). Typed Remote removes those
- * guards on purpose: the host, not the browser, must refuse the mismatched pair.
+ * A path listed on host A must never be committed against host B. The host, not
+ * the browser, refuses the mismatched pair, so the client carries no race guard
+ * of its own and a mismatched pair cannot slip through a stale listing.
  *
  * Mechanism: whenever *this* instance produces a path for a host (a directory
  * listing, a created directory, a resolved review bundle) it mints an HMAC over
