@@ -22,6 +22,10 @@
  *      at `pending (waiting for service: config)` and made cold start report
  *      `N entries did not activate`.)
  *   4. `client.js` mentions `webServer` zero times.
+ *   5. the remote `mkdirRemote` body keeps the local mapping: a pre-existing
+ *      directory is its own status (`remote-dev/directory-exists`) and any other
+ *      failure carries `mkdir`'s real stderr as `details.reason`, never the
+ *      internal shell sentinel (`2>/dev/null` + `ERR_MKDIR` is the D1 defect).
  *
  * Usage
  *   node scripts/verify-host-surface.mjs [--host <path>] [--client <path>]
@@ -161,6 +165,50 @@ if (!existsSync(options.host)) {
   )
 }
 
+// --- remote directory creation (D1) -------------------------------------------
+// The remote mkdir branch must mirror the local one: an existing *directory* is
+// its own outcome (`remote-dev/directory-exists`, same as local `EEXIST`), and
+// every other failure must carry `mkdir`'s real stderr as `details.reason` —
+// never the internal shell sentinel. Both properties are readable from the
+// built method body, which is what the negative control perturbs.
+if (!existsSync(options.host)) {
+  check('5. mkdirRemote region is inspectable', false, 'a readable host bundle', 'MISSING')
+} else {
+  const region = methodRegion(readFileSync(options.host, 'utf8'), 'mkdirRemote')
+  const body = region.text
+  check(
+    '5a. mkdirRemote probes the target with `[ -d … ]` and answers a distinct ERR_EXIST',
+    region.found && /\[\s*-d\s+/.test(body) && /ERR_EXIST/.test(body),
+    'method present, `[ -d "$target" ]` guard, distinct `ERR_EXIST` status',
+    region.found
+      ? `method present; guard=${/\[\s*-d\s+/.test(body)}; ERR_EXIST=${/ERR_EXIST/.test(body)}`
+      : 'method `mkdirRemote` NOT FOUND',
+  )
+  check(
+    '5b. mkdirRemote maps that status to remote-dev/directory-exists',
+    /remote-dev\/directory-exists/.test(body),
+    '`remote-dev/directory-exists` raised in the mkdirRemote body',
+    /remote-dev\/directory-exists/.test(body) ? 'present' : 'NOT FOUND',
+  )
+  check(
+    '5c. mkdirRemote keeps mkdir stderr instead of discarding it',
+    !/mkdir\b[^\n]*2>\s*\/dev\/null/.test(body) && /2>&1/.test(body) && /ERR_MKDIR:%s/.test(body),
+    'no `2>/dev/null` on the mkdir call, stderr captured with `2>&1` and shipped after `ERR_MKDIR:%s`',
+    `discard=${/mkdir\b[^\n]*2>\s*\/dev\/null/.test(body)}; capture2>&1=${/2>&1/.test(body)}; vector=${/ERR_MKDIR:%s/.test(body)}`,
+  )
+  check(
+    '5d. mkdirRemote never reports a shell sentinel as details.reason',
+    !/reason[^\n]*ERR_MKDIR/.test(body) && /reason\s*=/.test(body) && /captured|result\.stderr/.test(body),
+    'the `reason` binding is filled from captured stderr, not from `ERR_MKDIR`',
+    /reason[^\n]*ERR_MKDIR/.test(body)
+      ? `sentinel leaked: ${JSON.stringify(hitsOf(
+          body.split(/\r?\n/).map((text, index) => ({ text, number: index + 1 })),
+          /reason[^\n]*ERR_MKDIR/,
+        ))}`
+      : `reason binding present=${/reason\s*=/.test(body)}; stderr-sourced=${/captured|result\.stderr/.test(body)}`,
+  )
+}
+
 // --- client bundle ------------------------------------------------------------
 if (!existsSync(options.client)) {
   check('4. client bundle exists', false, `a file at ${options.client}`, 'MISSING')
@@ -212,6 +260,21 @@ function check(label, ok, expected, actual) {
 /** Prefix one line with the script name. */
 function report(line) {
   console.log(`[verify-host-surface] ${line}`)
+}
+
+/**
+ * Extract one `async <name>(…) { … }` method body from a bundle.
+ *
+ * The slice runs from the method signature to the next `async <name>(` token,
+ * which is how every remote handler is emitted; `found` is false when the
+ * method is absent at all (an injected negative control may delete it).
+ */
+function methodRegion(source, name) {
+  const match = new RegExp(`\\basync\\s+${name}\\s*\\(`).exec(source)
+  if (match === null) return { found: false, text: '' }
+  const rest = source.slice(match.index + match[0].length)
+  const next = /\basync\s+[A-Za-z_$][\w$]*\s*\(/.exec(rest)
+  return { found: true, text: next === null ? rest : rest.slice(0, next.index) }
 }
 
 /** The specified comment-line rule: trimStart() begins with `*`, `//` or `/*`. */

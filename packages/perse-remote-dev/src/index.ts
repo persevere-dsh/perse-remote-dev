@@ -1018,9 +1018,22 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     }
   }
 
+  /**
+   * Create one directory on an ssh host, mirroring {@link mkdirLocal}'s mapping.
+   *
+   * The remote script separates the two outcomes the local branch separates:
+   * a pre-existing **directory** is reported as its own status (`ERR_EXIST`,
+   * exit 3) so the host can answer `remote-dev/directory-exists`, exactly as
+   * `EEXIST` does locally; every other failure keeps `mkdir`'s own stderr
+   * (`2>&1`, no discard) and ships it back after an `ERR_MKDIR:` label so
+   * `details.reason` is the real reason text instead of a shell sentinel.
+   * @param resolved - the ssh endpoint the location proof resolved to.
+   * @param created - absolute path of the single child directory to create.
+   */
   private async mkdirRemote(resolved: SshResolution, created: string): Promise<void> {
     const script = 'RWS_TARGET=$(printf %s "$1" | base64 -d) || exit 9\n'
-      + 'mkdir "$RWS_TARGET" 2>/dev/null || { printf "ERR_MKDIR\\n"; exit 4; }\n'
+      + 'if [ -d "$RWS_TARGET" ]; then printf "ERR_EXIST\\n"; exit 3; fi\n'
+      + 'if ! RWS_ERR=$(mkdir "$RWS_TARGET" 2>&1); then printf "ERR_MKDIR:%s\\n" "$RWS_ERR"; exit 4; fi\n'
       + 'printf "OK:%s\\n" "$RWS_TARGET"\n'
     let result
     try {
@@ -1028,11 +1041,20 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     } catch (error) {
       throw this.sshFailure(error, resolved.endpoint, `远端创建目录失败：${created}`)
     }
-    if (result.stdout.includes('ERR_MKDIR') || result.code !== 0) {
+    const lines = result.stdout.split(/\r?\n/)
+    if (lines.includes('ERR_EXIST')) {
+      throw new RemoteError('remote-dev/directory-exists', `目录已存在：${created}`, { path: created })
+    }
+    if (result.code !== 0) {
+      const start = lines.findIndex((line) => line.startsWith('ERR_MKDIR:'))
+      const captured = start >= 0
+        ? [(lines[start] ?? '').slice('ERR_MKDIR:'.length), ...lines.slice(start + 1)].join('\n')
+        : ''
+      const reason = (captured.trim() || result.stderr.trim() || `exit ${result.code}`).slice(0, 300)
       throw new RemoteError(
         'remote-dev/mkdir-failed',
-        `远端创建目录失败：${created}`,
-        { hostId: resolved.host, path: created, code: result.code, reason: result.stdout.includes('ERR_MKDIR') ? 'ERR_MKDIR' : 'exit' },
+        `远端创建目录失败：${created}（${reason}）`,
+        { hostId: resolved.host, path: created, code: result.code, reason },
       )
     }
   }
