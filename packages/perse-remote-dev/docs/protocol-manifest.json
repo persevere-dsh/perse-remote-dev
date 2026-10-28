@@ -7,7 +7,7 @@
       "id": "001-remote-development",
       "source": "specs/001-remote-development/contracts/protocol.md",
       "mirror": "protocol/v1.md",
-      "sha256": "b5a6cd39e64fa7797a8b8547ba40656ccc1a0c690059672797da3f772a7cf659"
+      "sha256": "738dd7db6f9fad596e1b4eee90a221c09a9107fa7e75afa6f58de09e8310488b"
     },
     {
       "id": "002-mobile-workflows",

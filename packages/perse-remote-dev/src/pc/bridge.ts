@@ -612,4 +612,3 @@ async function readBoundedBody(response: Response, limit: number): Promise<Uint8
   for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.byteLength }
   return output
 }
-
