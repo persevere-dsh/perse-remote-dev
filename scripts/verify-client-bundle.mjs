@@ -3,8 +3,8 @@
  * verify-client-bundle.mjs — closure-factory contract gate for `client.js`.
  *
  * Proves, without a browser, that the built browser bundle is a well-formed
- * `window.__ModuleLoader__` registration whose only externals are the frozen
- * shell baseline, and that the generated Remote contribution is inlined
+ * `window.__ModuleLoader__` registration whose externals are the frozen shell
+ * baseline plus the DSH session API, and that Remote is inlined
  * (including its private `zod`) rather than left as a bare specifier.
  *
  * Checks
@@ -16,12 +16,14 @@
  *      sides** and the file then ends with `return module.exports;}});`
  *      (rolldown reflows the configured one-line `footer` across lines L7746-7748,
  *      so a raw `grep` for `return module.exports; } });` is a false negative);
- *   4. every `require("…")` specifier belongs to the 9-entry shell baseline
- *      `PLATFORM_MODULES`, which is also asserted to still match
+ *   4. every `require("…")` specifier belongs to the shared runtime table
+ *      `PLATFORM_MODULES`, which is asserted to match
  *      `tsdown.client.config.ts`;
  *   5. the inlined Remote contribution carries the `remoteDev` namespace and all
  *      15 frozen method names;
  *   6. `zod` is a private inline copy — `require("zod")` must appear nowhere.
+ *   7. removed project/review presentation markers do not appear in the active
+ *      Client bundle; the generated Remote descriptors may retain their RPCs.
  *
  * Usage
  *   node scripts/verify-client-bundle.mjs [--client <path>] [--source-config <path>]
@@ -41,17 +43,19 @@ const WORKSPACE_ROOT = resolve(HERE, '..')
 const DEFAULT_CLIENT = resolve(WORKSPACE_ROOT, 'packages', 'perse-remote-dev', 'client.js')
 const DEFAULT_CONFIG = resolve(WORKSPACE_ROOT, 'tsdown.client.config.ts')
 
-/** Frozen shell module table — must equal the config's copy. */
+/** Frozen shell modules plus shared DSH runtime peers — must equal the config's copy. */
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-typert-protocol',
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
   '@deepseek-ai/dsh-client-ui-dockkit',
+  '@deepseek-ai/dsh-api-session-controller/client',
 ]
 
 /** The package id the bundle must stamp; must equal `manifest.name`. */
@@ -147,7 +151,7 @@ const required = [
 ].sort()
 const foreign = required.filter((specifier) => !PLATFORM_MODULES.includes(specifier))
 check(
-  `4a. every require("…") specifier is in the ${PLATFORM_MODULES.length}-entry shell baseline`,
+  `4a. every require("…") specifier is in the ${PLATFORM_MODULES.length}-entry shared runtime table`,
   foreign.length === 0,
   `subset of ${JSON.stringify(PLATFORM_MODULES)}`,
   foreign.length === 0
@@ -161,11 +165,25 @@ const configModules = configBlock === null
   ? []
   : [...configBlock[1].matchAll(/["']([^"']+)["']/g)].map((match) => match[1])
 check(
-  '4b. the baseline still equals tsdown.client.config.ts PLATFORM_MODULES',
+  '4b. the shared runtime table still equals tsdown.client.config.ts PLATFORM_MODULES',
   configModules.length === PLATFORM_MODULES.length
     && configModules.slice().sort().join('\u0000') === PLATFORM_MODULES.slice().sort().join('\u0000'),
   `${PLATFORM_MODULES.length} entries ${JSON.stringify(PLATFORM_MODULES)}`,
   `${configModules.length} entries ${JSON.stringify(configModules)} (from ${configPath})`,
+)
+
+const packageManifestPath = resolve(WORKSPACE_ROOT, 'packages', 'perse-remote-dev', 'package.json')
+const packageManifest = JSON.parse(readFileSync(packageManifestPath, 'utf8'))
+const declaredDshExternals = packageManifest.dsh?.client?.external ?? []
+const requiredDshExternals = [
+  '@deepseek-ai/dsh-api-session-controller/client',
+]
+check(
+  '4c. manifest externalizes the DSH session API and shared Typert protocol runtime',
+  requiredDshExternals.every(specifier => declaredDshExternals.includes(specifier))
+    && declaredDshExternals.includes('@deepseek-ai/dsh-typert-protocol'),
+  JSON.stringify(requiredDshExternals),
+  JSON.stringify(declaredDshExternals),
 )
 
 // 5 ---------------------------------------------------------------------------
@@ -194,6 +212,24 @@ check(
   zodRequires.length === 0 && zodBareImports.length === 0,
   'zero bare zod specifiers',
   `require("zod") × ${zodRequires.length}, from "zod" × ${zodBareImports.length}`,
+)
+
+// 7 ---------------------------------------------------------------------------
+// These are public DOM/test markers of the retired custom projects/review UI,
+// not internal component or module names. Connection-management UI has its own
+// separate `data-pc-connection-settings` markers.
+const retiredPresentationMarkers = [
+  'data-rws-review',
+  'rws.review.',
+  'data-rws-host-card',
+  'data-rws-tunnels',
+]
+const markerHits = retiredPresentationMarkers.filter(marker => source.includes(marker))
+check(
+  '7. retired project/review presentation markers are absent from client.js',
+  markerHits.length === 0,
+  `none of ${JSON.stringify(retiredPresentationMarkers)}`,
+  markerHits.length === 0 ? 'no retired presentation markers' : JSON.stringify(markerHits),
 )
 
 finish()

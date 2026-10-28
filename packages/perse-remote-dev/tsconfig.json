@@ -6,8 +6,9 @@
     "noEmit": false,
     "emitDeclarationOnly": false,
     "paths": {
-      "@deepseek-ai/dsh-typert-protocol": ["../../typert-protocol.d.ts"],
-      "@deepseek-ai/schemastery": ["../../schemastery.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/client": ["../../vendor/native-dsh-session-controller-types/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/types": ["../../vendor/native-dsh-session-controller-types/lib/types/types.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/remote": ["../../vendor/native-dsh-session-controller-types/lib/typert.remote-client.d.ts"],
       "perse-remote-dev/remote": ["./lib/typert.remote-client.d.ts"],
       "perse-remote-dev/types": ["./src/types.ts"]
     }

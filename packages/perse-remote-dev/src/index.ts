@@ -50,10 +50,10 @@ import {
   SETTINGS_NS,
   decisionsPath,
   migrateTargetsToHosts,
-  remotePortOf,
 } from './settings.ts'
 import type { RemoteWorkspaceSettingsDocument, SettingsScope } from './settings.ts'
 import { TunnelManager } from './tunnels.ts'
+import { PcBridge } from './pc/bridge.ts'
 import type {
   RemoteCloseTunnelRequest,
   RemoteConfigurationRequest,
@@ -92,6 +92,21 @@ import type {
   RemoteTunnelView,
   RemoteWorkspaceLocation,
   RemoteWorkspaceTarget,
+  PcCallRequest,
+  PcCallValue,
+  PcConnectRequest,
+  PcConnectValue,
+  PcDisconnectRequest,
+  PcDisconnectValue,
+  PcForgetRequest,
+  PcForgetValue,
+  PcPairConfirmRequest,
+  PcPairPreviewRequest,
+  PcPairPreviewValue,
+  PcProfilesRequest,
+  PcProfilesValue,
+  PcRevokeRequest,
+  PcRevokeValue,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -171,6 +186,7 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   private readonly host: Context
   private readonly signer = new IdentitySigner()
   private readonly tunnels: TunnelManager
+  private readonly pcBridge = new PcBridge()
   private scope: SettingsScope | undefined
   private hostCache: { readonly at: number; readonly hosts: FoldedSshHost[] } | undefined
   private probeCache: { readonly at: number; readonly states: Map<string, RemoteLinkState> } | undefined
@@ -184,9 +200,7 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     // step with these two literals.
     super(ctx, 'remoteDev', { namespace: 'remoteDev' })
     this.host = ctx
-    this.tunnels = new TunnelManager({
-      readToken: (endpoint, remotePort) => this.readRemoteToken(endpoint, remotePort),
-    })
+    this.tunnels = new TunnelManager()
     this.host.inject(['settings'], (settingsCtx) => {
       const settings = (settingsCtx as { settings?: { register(ns: string, schema: unknown): SettingsScope } }).settings
       if (settings === undefined || typeof settings.register !== 'function') {
@@ -205,10 +219,67 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     })
     this.host.effect(() => () => {
       this.tunnels.dispose()
+      this.pcBridge.dispose()
     }, 'remote-dev.tunnels')
   }
 
   // ── Remote methods ───────────────────────────────────────────────────────
+
+  /** List sanitized local PC profiles. Device bearer tokens are never returned. */
+  @Remote
+  async pcProfiles(request: PcProfilesRequest, signal: AbortSignal): Promise<PcProfilesValue> {
+    void request
+    signal.throwIfAborted()
+    return { profiles: await this.pcBridge.profiles() }
+  }
+
+  /** Parse and preview an iOS-compatible short-lived pairing link without network access. */
+  @Remote
+  pcPairPreview(request: PcPairPreviewRequest, signal: AbortSignal): PcPairPreviewValue {
+    signal.throwIfAborted()
+    return this.pcBridge.preview(request.link)
+  }
+
+  /** Consume one explicit pairing confirmation, exchange once, then verify host.info. */
+  @Remote
+  pcPairConfirm(request: PcPairConfirmRequest, signal: AbortSignal): Promise<PcConnectValue> {
+    return this.pcBridge.confirm(request, signal)
+  }
+
+  /** Connect one already saved profile and verify its host identity. */
+  @Remote
+  pcConnect(request: PcConnectRequest, signal: AbortSignal): Promise<PcConnectValue> {
+    return this.pcBridge.connect(request.profileId, signal)
+  }
+
+  /** Close only this plugin's local socket for the selected profile. */
+  @Remote
+  async pcDisconnect(request: PcDisconnectRequest, signal: AbortSignal): Promise<PcDisconnectValue> {
+    signal.throwIfAborted()
+    await this.pcBridge.disconnect(request.profileId)
+    return { profileId: request.profileId, disconnected: true }
+  }
+
+  /** Remove one locally stored device credential and its local socket. */
+  @Remote
+  async pcForget(request: PcForgetRequest, signal: AbortSignal): Promise<PcForgetValue> {
+    signal.throwIfAborted()
+    await this.pcBridge.forget(request.profileId)
+    return { profileId: request.profileId, forgotten: true }
+  }
+
+  /** Revoke the connected device on the remote host, then erase its local grant. */
+  @Remote
+  async pcRevoke(request: PcRevokeRequest, signal: AbortSignal): Promise<PcRevokeValue> {
+    await this.pcBridge.revoke(request.profileId, request.generation, signal)
+    return { profileId: request.profileId, revoked: true }
+  }
+
+  /** Forward one allowlisted 1.2 developer method bound to this connection generation. */
+  @Remote
+  async pcCall(request: PcCallRequest, signal: AbortSignal): Promise<PcCallValue> {
+    return { resultJson: await this.pcBridge.call(request, signal) }
+  }
 
   /**
    * List selectable targets: the local machine, the user's configured hosts, and
@@ -399,40 +470,8 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   @Remote
   async openProject(request: RemoteOpenProjectRequest, signal: AbortSignal): Promise<RemoteOpenedProject> {
     signal.throwIfAborted()
-    const location = this.assertLocation(request.location)
-    const path = assertSafePath(location.path)
-    const resolved = await this.endpointFor(location.target.hostId)
-    if (resolved.kind !== 'ssh') {
-      throw new RemoteError(
-        'remote-dev/target-not-remote',
-        `本机（${resolved.host}）没有需要打开的远端 DSH；请选择一个 ssh 主机`,
-        { hostId: resolved.host },
-      )
-    }
-    let saved = false
-    if (request.remember) {
-      saved = await this.rememberProject(resolved, path)
-    }
-    const opened = await this.tunnels.open({
-      hostId: resolved.host,
-      configId: resolved.settings !== undefined ? resolved.settings.id : '',
-      endpoint: resolved.endpoint,
-      remotePort: resolved.settings !== undefined ? remotePortOf(resolved.settings) : '3080',
-      requireAuthentication: request.requireAuthentication,
-    }, signal)
-    const view = opened.view
-    return {
-      target: resolved.target,
-      host: resolved.host,
-      path,
-      url: view.url,
-      localPort: view.localPort,
-      remotePort: view.remotePort,
-      reused: opened.reused,
-      authenticated: view.authenticated,
-      saved,
-      ...view.warning === undefined ? {} : { warning: view.warning },
-    }
+    void request
+    throw legacyPcRoute('openProject')
   }
 
   /**
@@ -443,22 +482,8 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   @Remote
   async openTunnel(request: RemoteTunnelRequest, signal: AbortSignal): Promise<RemoteTunnelView> {
     signal.throwIfAborted()
-    const resolved = await this.endpointFor(request.target.hostId)
-    if (resolved.kind !== 'ssh') {
-      throw new RemoteError(
-        'remote-dev/target-not-remote',
-        `本机（${resolved.host}）不需要 ssh 隧道`,
-        { hostId: resolved.host },
-      )
-    }
-    const opened = await this.tunnels.open({
-      hostId: resolved.host,
-      configId: resolved.settings !== undefined ? resolved.settings.id : '',
-      endpoint: resolved.endpoint,
-      remotePort: resolved.settings !== undefined ? remotePortOf(resolved.settings) : '3080',
-      requireAuthentication: request.requireAuthentication,
-    }, signal)
-    return opened.view
+    void request
+    throw legacyPcRoute('openTunnel')
   }
 
   /**
@@ -470,6 +495,7 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   listTunnels(request: RemoteTunnelListRequest, signal: AbortSignal): Promise<RemoteTunnelListValue> {
     signal.throwIfAborted()
     const tunnels = this.tunnels.list().filter((t) => request.includeDead || t.alive)
+      .map((t) => ({ ...t, url: '', warning: 'Legacy tunnel metadata only; token URL opening is retired. Use PC pairing.' }))
     return Promise.resolve({ tunnels })
   }
 
@@ -763,34 +789,6 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     if (host === '') missing.push('主机（请到设置 › 远程开发添加）')
     if (projectPath === '') missing.push('项目路径')
     return { host, hostId, projectPath, mDir, hub, verifyCmd, missing }
-  }
-
-  /** Persist the project path (and remember it on the host record). */
-  private async rememberProject(resolved: SshResolution, path: string): Promise<boolean> {
-    // A `remember:true` request must never report `saved:true` without an actual write. A target
-    // that is not part of the configured host records (the `~/.ssh/config` alias case the
-    // directory flow offers) has no record to update, so report `false`. Auto-registering it into
-    // `document.hosts` would erase the configured-vs-alias boundary that `configuredOnly` relies
-    // on, so that is deliberately not done.
-    // `record.projectPath` is the *local* W (the settings form stores the user's working copy
-    // there, and `resolveChain` reads it as `RemoteReviewTarget.projectPath`), while
-    // `openProject` receives a *remote* path from the host-issued location. Writing that remote
-    // path into `projectPath` would hand it to the local-W consumers. The remembered remote
-    // project is therefore persisted on the host record's `projects[]` only; `projectPath` keeps
-    // its single local-W meaning, so a remote path can never leak into the local-W chain.
-    const scope = this.requireScope()
-    const { hosts } = this.configuredHosts()
-    const target = resolved.settings !== undefined ? stableIdOf(resolved.settings) : resolved.host
-    let changed = false
-    const updated = hosts.map((record) => {
-      if (stableIdOf(record) !== target && record.id !== target) return record
-      if (record.projects.includes(path)) return record
-      changed = true
-      return { ...record, projects: [...record.projects, path] }
-    })
-    if (!changed) return false
-    await scope.update({ hosts: updated })
-    return true
   }
 
   // ── host inventory ──────────────────────────────────────────────────────
@@ -1282,35 +1280,6 @@ export class RemoteWorkspaceService extends TypertRemoteService {
 
   // ── ssh odds and ends ───────────────────────────────────────────────────
 
-  /** Read the remote DSH's current token from its own log (never cached). */
-  private async readRemoteToken(endpoint: SshEndpoint, remotePort: string): Promise<{ token?: string; error?: string }> {
-    const port = /^[0-9]+$/.test(String(remotePort || '')) ? String(remotePort) : '3080'
-    const script = [
-      'RWS_LOG="${DSH_HOME:-$HOME/.dsh}/web.log"',
-      '[ -f "$RWS_LOG" ] || { printf "ERR_NOLOG\\n"; exit 0; }',
-      `RWS_TOK=$(grep -E "127\\.0\\.0\\.1:${port}/" "$RWS_LOG" 2>/dev/null | tail -1 | grep -oE "token=[A-Za-z0-9_-]+" | tail -1 | cut -d= -f2-)`,
-      '[ -n "$RWS_TOK" ] || RWS_TOK=$(grep -oE "token=[A-Za-z0-9_-]+" "$RWS_LOG" 2>/dev/null | tail -1 | cut -d= -f2-)',
-      '[ -n "$RWS_TOK" ] || { printf "ERR_NOTOKEN\\n"; exit 0; }',
-      'printf "TOKEN:%s\\n" "$RWS_TOK"',
-    ].join('\n') + '\n'
-    let result
-    try {
-      result = await sshScript(endpoint, script, [], 12000)
-    } catch (error) {
-      return { error: `ssh ${endpoint.hostId} 取 token 失败：${errorMessage(error)}` }
-    }
-    const out = result.stdout
-    const line = out.split(/\r?\n/).find((l) => l.startsWith('TOKEN:'))
-    const token = line !== undefined ? line.slice('TOKEN:'.length).trim() : ''
-    if (token !== '') return { token }
-    if (out.includes('ERR_NOLOG')) return { error: `远端 ${endpoint.hostId} 上 $DSH_HOME/web.log 不存在（远端 dsh web 未启动过？）` }
-    if (out.includes('ERR_NOTOKEN')) return { error: `远端 ${endpoint.hostId} 的 web.log 里没有 token= 行（远端 dsh web 未打印启动地址？）` }
-    return {
-      error: `远端 ${endpoint.hostId} 的 web.log 解析不到 token（exit ${result.code}）`
-        + (result.stderr.trim() !== '' ? `：${result.stderr.trim().slice(0, 160)}` : ''),
-    }
-  }
-
   /** Map one typed transport failure onto its domain code. */
   private sshFailure(error: unknown, endpoint: SshEndpoint, context: string): RemoteError {
     if (error instanceof SshExecutionError) {
@@ -1411,6 +1380,14 @@ function moduleUrl(specifier: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function legacyPcRoute(method: string): RemoteError {
+  return new RemoteError(
+    'remote-dev/pc-legacy-retired',
+    '带 DSH token 的 URL 已停用。请使用 PC 配对预览与确认连接。',
+    { method },
+  )
 }
 
 export default RemoteWorkspaceService

@@ -1,0 +1,82 @@
+{
+  "artifact": "development-only generated declaration input",
+  "package": "@deepseek-ai/dsh-api-session-controller@0.2.1-rc.2",
+  "sourceCommit": "b9e77c1316dd54245062419f6fd6d8c13f247214",
+  "sourceTree": "ccf24e58defd055d0912070f425e791fa4e7b300",
+  "generationCommand": "pnpm run build:lib:client (TypeScript declarations); pnpm run codegen (Typert remote declarations)",
+  "tools": {
+    "node": "24.13.0",
+    "pnpm": "11.28.5",
+    "typescript": "6.0.3",
+    "typertPackageVersion": "0.2.1-rc.2"
+  },
+  "license": "MIT",
+  "copyright": "DeepSeek",
+  "licenseSha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+  "files": [
+    {
+      "path": "lib/typert.remote-client.d.ts",
+      "sha256": "d14d3c79f4924cd5471e6991f40f5d98c117e7b90311ad6ae7ad6bf2996b81f2"
+    },
+    {
+      "path": "lib/types/client/contract/events.d.ts",
+      "sha256": "b2518e7d25f1acbb2231bd6c048ed4ec945f5909961b022ae932aa76173fff68"
+    },
+    {
+      "path": "lib/types/client/contract/external-sessions.d.ts",
+      "sha256": "ae271071a77169a12abe54601d4f8ba634364540e57b56b712f0d3d3c4679dc1"
+    },
+    {
+      "path": "lib/types/client/contract/session.d.ts",
+      "sha256": "c0e4edf6424d138a240f9c05de41be435566d8dc90571948ea798dd72fc75f9b"
+    },
+    {
+      "path": "lib/types/client/contract/sessions.d.ts",
+      "sha256": "8105f5100d7b8cb18352acf5f1dd58c6071009e2dbbc80699a49d7ec082f4e5f"
+    },
+    {
+      "path": "lib/types/client/contract/snapshot.d.ts",
+      "sha256": "917110bd7ea3a69553183a9cbf07a50083c9481a70bd512840be5cb1bbfcb796"
+    },
+    {
+      "path": "lib/types/client/index.d.ts",
+      "sha256": "4219ddbde4f4c895013892a4592369c7dd1bdd62c76137ed4e1e7a616bc977fb"
+    },
+    {
+      "path": "lib/types/client/scope.d.ts",
+      "sha256": "62b2668ffa15b6f5cbb89d3659362a0063b4b2560947a623b02dece0d61dbeab"
+    },
+    {
+      "path": "lib/types/client/sessions/lineage.d.ts",
+      "sha256": "1b8a3ed7d1d23a6b822b52e63b5b7460b2a910495a4aa8a8bb2aff931d003b56"
+    },
+    {
+      "path": "lib/types/client/sessions/manager.d.ts",
+      "sha256": "e07ab2a3628c0b35ee470350be41c32fb78e20cde65253176cb9a8627a580969"
+    },
+    {
+      "path": "lib/types/client/sessions/projection-store.d.ts",
+      "sha256": "7ea5d7ec5484a29e49eb029a296c3d1d6bbac319c22dea1a5d3c7cd144573b57"
+    },
+    {
+      "path": "lib/types/client/sessions/remotes.d.ts",
+      "sha256": "8f7ed24b86218bde67ac5c83a3e443f0e6836fd402ac8a45f041add1022ff525"
+    },
+    {
+      "path": "lib/types/client/sessions/service.d.ts",
+      "sha256": "5ecd5550dc44219d77db3260256a4c19cb76cd8664822086f19143c1c7893e90"
+    },
+    {
+      "path": "lib/types/client/sessions/session.d.ts",
+      "sha256": "9c1a5a5e0016c0381527bfdb90ec072c02a79b180c8c11b38c8a62c87bd7859a"
+    },
+    {
+      "path": "lib/types/client/transport.d.ts",
+      "sha256": "ceb5014c70d13468dd1d85d0a1f57f696a4fd094f78f21fd4cff09c297257d46"
+    },
+    {
+      "path": "lib/types/types.d.ts",
+      "sha256": "81017e58e95b3a58d62e0c3d540bd6286b645686ed3d208acac1dd2a206bea27"
+    }
+  ]
+}

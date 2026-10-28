@@ -1,0 +1,25 @@
+{
+  "contract": "004-pc-remote-development",
+  "generatedFrom": "root docs/pc-* and docs/protocol/*; protocol digests are frozen and optionally checked against specs/001..003/contracts/protocol.md",
+  "canonicalPerseSpecsVerified": true,
+  "mirrors": [
+    {
+      "id": "001-remote-development",
+      "source": "specs/001-remote-development/contracts/protocol.md",
+      "mirror": "protocol/v1.md",
+      "sha256": "b5a6cd39e64fa7797a8b8547ba40656ccc1a0c690059672797da3f772a7cf659"
+    },
+    {
+      "id": "002-mobile-workflows",
+      "source": "specs/002-mobile-workflows/contracts/protocol.md",
+      "mirror": "protocol/v1.1.md",
+      "sha256": "f53676df3078a9038e8ac18e9904ee7be08783c147c13d7f804bae083a17d0f4"
+    },
+    {
+      "id": "003-task-centered-experience",
+      "source": "specs/003-task-centered-experience/contracts/protocol.md",
+      "mirror": "protocol/v1.2.md",
+      "sha256": "7efce2961a553e8089ddd618d03ca63940ad51b39be60f4f0d90e94bc9715047"
+    }
+  ]
+}

@@ -10,6 +10,7 @@
  * `data-testid` seats are additive and never replace them.
  */
 import * as React from 'react'
+import type { ReactNode } from 'react'
 import type {
   RemoteDirectoryEntry,
   RemoteDirectoryListing,
@@ -38,15 +39,13 @@ import { LOCAL_VIEW, STATE_LABEL, blankHost } from './model.ts'
 
 const h = React.createElement
 
-/** Bind a model cell to a component-local snapshot state. */
+/** Read a model cell through React's source-backed external-store hook. */
 export function useCell<T>(cell: Cell<T>): T {
-  const [snapshot, setSnapshot] = React.useState<T>(cell.get)
-  React.useEffect(() => cell.subscribe(() => setSnapshot(cell.get())), [cell])
-  return snapshot
+  return React.useSyncExternalStore(cell.subscribe, cell.get, cell.get)
 }
 
 /** One coloured link-state dot. */
-function Dot(state: string): unknown {
+function Dot(state: string): ReactNode {
   return h('span', { className: 'rws_dot', 'data-state': state })
 }
 
@@ -70,7 +69,7 @@ export interface BadgeFace {
  * @param props - badge face.
  * @returns badge element.
  */
-export function HostBadge(props: BadgeFace): unknown {
+export function HostBadge(props: BadgeFace): ReactNode {
   const host = props.useActiveHost()
   return h(
     'span',
@@ -110,7 +109,7 @@ const HOST_FIELDS: readonly FieldSpec[] = [
   { key: 'port', label: '端口', placeholder: '22' },
   { key: 'username', label: '用户名', placeholder: '例如 root' },
   { key: 'auth', label: '登陆方式', placeholder: '', options: AUTH_OPTIONS },
-  { key: 'projectPath', label: '项目路径（可选）', placeholder: '/home/me/proj' },
+  { key: 'projectPath', label: '项目路径（可选）', placeholder: '~/proj' },
   { key: 'remotePort', label: '远端 DSH 端口', placeholder: '3080' },
 ]
 
@@ -159,7 +158,7 @@ function hostFieldValue(host: RemoteWorkspaceHostSetting, key: keyof RemoteWorks
  * @param props - settings face.
  * @returns section element.
  */
-export function RemoteDevSection(props: SectionFace): unknown {
+export function RemoteDevSection(props: SectionFace): ReactNode {
   const config = props.useConfig()
   const hostFace = props.useHostFace()
   const tunnels = props.useTunnels()
@@ -247,7 +246,7 @@ export function RemoteDevSection(props: SectionFace): unknown {
     props.loadTunnels()
   }
 
-  const field = (index: number, spec: FieldSpec): unknown => {
+  const field = (index: number, spec: FieldSpec): ReactNode => {
     const host = draft[index]
     if (host === undefined) return null
     const input = spec.options === undefined
@@ -276,7 +275,7 @@ export function RemoteDevSection(props: SectionFace): unknown {
     )
   }
 
-  const kids: unknown[] = []
+  const kids: ReactNode[] = []
   kids.push(h('p', { key: 'lead', className: 'rws-lead' },
     '添加你要连接的远端主机。填好地址与登陆方式后，创建项目时就能选到它。'))
 
@@ -370,7 +369,7 @@ export function RemoteDevSection(props: SectionFace): unknown {
         h('input', {
           className: 'rws-fld-input',
           value: scalars.mDir,
-          placeholder: '/home/me/.rd/m',
+          placeholder: '~/.rd/m',
           'data-testid': 'rws.settings.field.mDir',
           onChange: (event: { target: { value: string } }) => setScalars({ ...scalars, mDir: event.target.value }),
         })),
@@ -379,7 +378,7 @@ export function RemoteDevSection(props: SectionFace): unknown {
         h('input', {
           className: 'rws-fld-input',
           value: scalars.hub,
-          placeholder: '/home/me/hub',
+          placeholder: '~/hub',
           'data-testid': 'rws.settings.field.hub',
           onChange: (event: { target: { value: string } }) => setScalars({ ...scalars, hub: event.target.value }),
         })),
@@ -476,7 +475,7 @@ export interface FlowFace {
  * @param props - flow face + owner props.
  * @returns dialog element (or null while closed).
  */
-export function DirectoryFlow(props: FlowFace & FlowOwnerProps): unknown {
+export function DirectoryFlow(props: FlowFace & FlowOwnerProps): ReactNode {
   const hosts = props.useHosts()
   const [hostId, setHostId] = React.useState('local')
   const [showAll, setShowAll] = React.useState(false)
@@ -582,7 +581,7 @@ export function DirectoryFlow(props: FlowFace & FlowOwnerProps): unknown {
     if (picked !== null && picked !== '') props.onPicked(picked)
   }
 
-  const crumbs: unknown[] = [h('button', {
+  const crumbs: ReactNode[] = [h('button', {
     key: 'host',
     type: 'button',
     className: 'rws_crumb rws_crumbHost',
@@ -609,7 +608,7 @@ export function DirectoryFlow(props: FlowFace & FlowOwnerProps): unknown {
     })
   }
 
-  const extras: unknown[] = []
+  const extras: ReactNode[] = []
   if (newName !== null) {
     extras.push(h('div', { className: 'rws_row', key: 'new' },
       h('span', { className: 'rws_lbl' }, '新建'),
@@ -790,7 +789,7 @@ function splitDiff(diff: string): Record<string, string> {
 }
 
 /** Line-coloured diff body. */
-function DiffView(text: string): unknown {
+function DiffView(text: string): ReactNode {
   if (text === '') return h('pre', { className: 'rws_diff' }, '（无 diff）')
   return h('pre', { className: 'rws_diff', 'data-rws-diff': '1' },
     ...text.split('\n').map((line, index) => {
@@ -812,7 +811,7 @@ function DiffView(text: string): unknown {
  * @param props - review face.
  * @returns launcher, or the open panel.
  */
-export function ReviewPanel(props: ReviewFace): unknown {
+export function ReviewPanel(props: ReviewFace): ReactNode {
   const review = props.useReview()
   const diagnostics = props.useDiagnostics()
   const [open, setOpen] = React.useState(false)

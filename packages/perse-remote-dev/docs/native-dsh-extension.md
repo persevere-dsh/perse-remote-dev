@@ -1,0 +1,33 @@
+# Native DSH external-session extension
+
+Status: historical architecture notes for work based on DSH **0.2.1-rc.2**, commit `687f282e8625c6b8d11ff58211a90524be2e4317`. That commit is a baseline reference only. These notes do not establish that the current native candidate is built, compatible, or accepted. The earlier private validation artifact is intentionally not part of this public source tree.
+
+## Ownership
+
+The controlled host owns the Agent, model credentials, permission policy, workspace and authoritative journal. The controlling DSH owns its existing conversation renderer, composer, draft lifecycle, sidebar and SessionBinding lifetime. Perse owns connection configuration, private credentials and translation to the canonical Perse Remote 1.2 protocol. No additional listener, local Agent, mirrored local journal or replacement conversation UI is introduced.
+
+## Native contract
+
+`packages/api/session-controller/src/client/contract/external-sessions.ts` defines host-qualified external addresses, verified backend identities, catalogs, capabilities and open results. `ISessions` adds `externalCatalog`, `retainedBindings`, `registerExternalBackend`, `createExternalSession`, `externalAddressOf`, `externalIdentityOf` and `respondExternalApproval`; `retain` opens a scoped native binding for an external address.
+
+`ClientSessions` names presentation IDs and owns reference counting, exact backend/generation checks, opening cancellation and disposal. The standard native `SessionFace` and `SessionEventSource` remain the UI contract. A disconnected/replaced backend retires its bindings. Unknown external IDs never fall through to local create, fork, projection or Agent operations. Concurrent creates for one backend/host/generation/workspace share the same pending operation; a later explicit create is a new operation. Confirmed IDs survive catalog refresh failure. The controller exposes exact retained bindings and source counts independently of the local catalog. Native `UiSession` uses that observable to select its main conversation scope, subscribe to remote running state and retire the correct generation; merely highlighting a sidebar row is insufficient.
+
+Native `ui-workspace` consumes the external catalog beside local workspace rows. Remote host → authorized project → session selection uses ordinary native navigation. Explicit local creation remains local. Remote paths never become local cwd. The native blank-session Hero uses a read-only remote project label and enables the ordinary text composer without requiring a local model. Existing-session headers retain a host/project badge even with the sidebar collapsed.
+
+## Perse adapter
+
+`src/client/native-sessions/` implements the native types against the patched source declarations. The Node bridge authenticates WebSockets with a private device grant; browser code sees a profile ID and generation, never a token. Bounded polling reads canonical `session.read` with replay/deduplication. Native event sequence, original type, source-event and surface replacement metadata are preserved. Gateway-only status, error and approval envelopes are separate from native journal events. Unknown native event types retain their payload as client-only opaque records.
+
+Prompt uncertainty stores only a payload fingerprint and original `clientMessageId`, scoped to the remote identity. An explicit retry of the same content reuses that ID. Different content cannot overwrite an unresolved dispatch. It never automatically replays a prompt or copies the draft into a second state store. Session creation stores a receipt before dispatch; active requests are not shown as uncertain. Only an unresolved failure/reload leaves a visible reminder. A user can acknowledge that reminder after checking the session list without issuing another remote operation.
+
+Durable approval requests and resolutions feed the native approval panel. Responses allow only the advertised one-shot `allowOnce` or `deny`, checked against the retained backend, generation, session and pending approval ID. No remembered local policy or automatic approval is added.
+
+## Capability boundary
+
+The adapter supports remote text prompts/queue submission, interruption, history, title and durable attachment reads, plus one-shot approvals when advertised by the host. Native local commands, upload paths, model/preset/permission selection, user-question answers, queue editing, terminal/file panels, export and fork require additional explicitly routed operations; current guards refuse or explain them instead of acting on local resources. Worktree and code review are not duplicated as plugin pages.
+
+On an upstream DSH runtime without the extension, the plugin remains a connection-settings surface and explains the missing native API. The extension must be built/installed with the matching DSH source; the plugin tarball alone does not patch the installed desktop application.
+
+## Development and delivery
+
+Use `npm run setup:dsh-native -- --source /path/to/perse-dsh-native` to validate and link built native API packages into this plugin development checkout only. Build, test and pack normally. Runtime installation is always a tarball in a disposable profile. The previously described validation runtime overlaid changed native client modules onto an isolated copy of the official baseline. That historical procedure is not current release or acceptance evidence; repeat validation against the exact current source and runtime before making delivery claims.

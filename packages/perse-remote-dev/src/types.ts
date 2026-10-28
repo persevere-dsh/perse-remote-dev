@@ -1,3 +1,5 @@
+import type {} from '@deepseek-ai/dsh-typert-protocol'
+
 /**
  * Browser-safe Remote vocabulary for the `remoteDev` namespace, plus the
  * domain failure code table.
@@ -115,7 +117,170 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'remote-dev/comment-empty': {}
     /** A rollback must name a baseline ref. */
     'remote-dev/ref-missing': {}
+    /** A forwarded Perse Remote 1.2 method returned a JSON-RPC error. */
+    'remote-dev/pc-remote-error': {
+      readonly profileId: string
+      readonly method: string
+      readonly remoteCode: number
+      readonly remoteMessage: string
+      readonly dataJson?: string
+    }
+    /** A PC profile is absent, malformed, or no longer usable. */
+    'remote-dev/pc-profile-invalid': { readonly profileId: string }
+    /** A pairing preview handle is absent, expired, or already consumed. */
+    'remote-dev/pc-confirmation-invalid': {}
+    /** A pairing link failed strict local validation. */
+    'remote-dev/pc-pairing-invalid': { readonly reason: string }
+    /** Private profile storage is unsafe or unavailable. */
+    'remote-dev/pc-storage-unavailable': { readonly reason: string }
+    /** A supplied connection generation is stale. */
+    'remote-dev/pc-generation-stale': {
+      readonly profileId: string
+      readonly expectedGeneration: string
+      readonly currentGeneration?: string
+    }
+    /** The method is outside the 1.2 forwarding allowlist. */
+    'remote-dev/pc-method-unsupported': { readonly method: string }
+    /** Remote protocol is outside the supported 1.x minor range. */
+    'remote-dev/pc-protocol-unsupported': {
+      readonly protocolVersion: string
+      readonly requiredMajor: 1
+      readonly minimumMinor: 1
+    }
+    /** A bridge request or response exceeded a configured bound. */
+    'remote-dev/pc-payload-too-large': { readonly limitBytes: number }
+    /** Bridge transport did not complete within its bounded deadline. */
+    'remote-dev/pc-transport-failed': {
+      readonly profileId: string
+      readonly method: string
+      readonly reason: string
+    }
+    /** Legacy URL-opening routes have been retired in favor of paired Perse 1.2 profiles. */
+    'remote-dev/pc-legacy-retired': { readonly method: string }
+    /** A native DSH session operation cannot be represented by Perse 1.2. */
+    'remote-dev/pc-native-capability-unavailable': {
+      readonly method: string
+      readonly capability: string
+    }
+    /** Remote native history is no longer retained at the requested cursor. */
+    'remote-dev/pc-native-history-expired': {
+      readonly sessionId: string
+      readonly afterSequence: number
+      readonly retentionFloor: number
+    }
+    /** The remote native session response was invalid or exceeded a safe bound. */
+    'remote-dev/pc-native-session-invalid': {
+      readonly sessionId: string
+      readonly reason: string
+    }
+    /** This DSH runtime has no host-aware native-session extension. */
+    'remote-dev/pc-native-session-unavailable': { readonly requiredApi: string }
   }
+}
+
+/** Sanitized profile summary; durable device credentials never cross the Remote boundary. */
+export interface PcProfileView {
+  readonly profileId: string
+  readonly endpoint: string
+  readonly networkMode: 'https' | 'tailnet' | 'local'
+  readonly hostId: string
+  readonly hostName: string
+  readonly deviceId: string
+  readonly deviceName: string
+  readonly status: 'disconnected' | 'connected' | 'offline' | 'revoked'
+  readonly protocolVersion?: string
+  readonly verifiedAt?: string
+}
+
+/** Result of listing locally stored PC connection profiles. */
+export interface PcProfilesValue {
+  readonly profiles: readonly PcProfileView[]
+}
+
+/** Empty request for the saved local PC profile list. */
+export interface PcProfilesRequest {}
+
+/** Pairing link supplied for a no-network local preview. */
+export interface PcPairPreviewRequest {
+  readonly link: string
+}
+
+/** Redacted host/access summary and one-use opaque local confirmation handle. */
+export interface PcPairPreviewValue {
+  readonly confirmationId: string
+  readonly hostId: string
+  readonly hostName: string
+  readonly endpoint: string
+  readonly networkMode: 'https' | 'tailnet' | 'local'
+  readonly expiresAt: string
+  readonly accessSummary: string
+}
+
+/** Explicit confirmation request; the original pairing secret is not accepted here. */
+export interface PcPairConfirmRequest {
+  readonly confirmationId: string
+  readonly deviceName: string
+}
+
+/** Result after one-time exchange and a verified host.info handshake. */
+export interface PcConnectValue {
+  readonly profileId: string
+  readonly hostId: string
+  readonly generation: string
+  readonly hostInfoJson: string
+}
+
+/** Selects an existing locally stored profile for connection. */
+export interface PcConnectRequest {
+  readonly profileId: string
+}
+
+/** Selects an existing local profile for a disconnect operation. */
+export interface PcDisconnectRequest {
+  readonly profileId: string
+}
+
+/** Confirmation that a local bridge socket was closed. */
+export interface PcDisconnectValue {
+  readonly profileId: string
+  readonly disconnected: true
+}
+
+/** Selects an existing local profile for deletion. */
+export interface PcForgetRequest {
+  readonly profileId: string
+}
+
+/** Confirmation that one local profile and its credential were removed. */
+export interface PcForgetValue {
+  readonly profileId: string
+  readonly forgotten: true
+}
+
+/** Revokes the authenticated device grant on its current verified connection. */
+export interface PcRevokeRequest {
+  readonly profileId: string
+  readonly generation: string
+}
+
+/** Confirmation that self-revocation succeeded and the local profile was forgotten. */
+export interface PcRevokeValue {
+  readonly profileId: string
+  readonly revoked: true
+}
+
+/** Request to forward one allowlisted 1.2 method over the captured generation. */
+export interface PcCallRequest {
+  readonly profileId: string
+  readonly generation: string
+  readonly method: string
+  /** JSON-encoded object params, bounded and schema-checked by the bridge. */
+  readonly paramsJson: string
+}
+
+/** JSON-encoded result from one allowlisted 1.2 method. */
+export interface PcCallValue {
+  readonly resultJson: string
 }
 
 /**

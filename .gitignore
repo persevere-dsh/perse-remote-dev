@@ -4,3 +4,12 @@ lib/
 *.tgz
 *.tsbuildinfo
 .DS_Store
+
+# Development-only native API declaration input: track the exact allowlisted
+# declaration closure, while keeping any runtime output under vendor lib ignored.
+!/vendor/native-dsh-session-controller-types/lib/
+vendor/native-dsh-session-controller-types/lib/**
+!/vendor/native-dsh-session-controller-types/lib/typert.remote-client.d.ts
+!/vendor/native-dsh-session-controller-types/lib/types/
+!/vendor/native-dsh-session-controller-types/lib/types/**/
+!/vendor/native-dsh-session-controller-types/lib/types/**/*.d.ts

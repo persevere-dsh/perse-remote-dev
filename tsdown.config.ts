@@ -37,6 +37,7 @@ export default defineConfig({
       '@deepseek-ai/cordis',
       '@deepseek-ai/dsh-typert-protocol',
       '@deepseek-ai/schemastery',
+      'ws',
       'zod',
     ],
   },

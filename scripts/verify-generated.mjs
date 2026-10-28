@@ -16,6 +16,8 @@
  *   5. `lib/typert.host.js` carries all 15 frozen `@Remote` method names;
  *   6. the shipped surface never names a `src/` path — neither as a shipped file
  *      location nor as a module specifier.
+ *   7. the DSH Client bundle is the only shipped Client implementation and no
+ *      retired PC workflow/presentation outputs are shipped.
  *
  * KNOWN FALSE POSITIVE for check 6 (do not "fix" it by grepping the raw text):
  * the generator stamps `sourceLocation: {"file":"packages/perse-remote-dev/src/…"}`
@@ -60,6 +62,14 @@ const EXPORT_FACES = ['types', 'default']
 
 /** The frozen `@Remote` method set (must all be present in `lib/typert.host.js`). */
 const FROZEN_METHODS = [
+  'pcProfiles',
+  'pcPairPreview',
+  'pcPairConfirm',
+  'pcConnect',
+  'pcDisconnect',
+  'pcForget',
+  'pcRevoke',
+  'pcCall',
   'listTargets',
   'readConfiguration',
   'updateConfiguration',
@@ -187,7 +197,7 @@ const missingMethods = FROZEN_METHODS.filter(
   (method) => !new RegExp(`\\b${method}\\b`).test(hostJs),
 )
 check(
-  `5. lib/typert.host.js carries all ${FROZEN_METHODS.length} frozen method names`,
+  `5. lib/typert.host.js carries all ${FROZEN_METHODS.length} frozen + PC method names`,
   missingMethods.length === 0,
   `all of ${JSON.stringify(FROZEN_METHODS)}`,
   missingMethods.length === 0
@@ -230,6 +240,22 @@ check(
   specifierOffenders.length === 0
     ? `all module specifiers in ${shipped.length} shipped paths are src/-free`
     : JSON.stringify(specifierOffenders),
+)
+
+// 7 ---------------------------------------------------------------------------
+// The browser-facing DSH plugin lives in client.js. Internal tsc output under
+// lib/types/client is not an export and must not be packed; this also prevents
+// legacy project/review UI source declarations from becoming accidental API.
+const shippedClientImplementation = shipped.filter(candidate =>
+  /(^|\/)lib\/types\/client\//.test(candidate),
+)
+check(
+  '7. no unbundled Client implementation or retired PC presentation ships',
+  shippedClientImplementation.length === 0,
+  'client.js is the only shipped Client implementation',
+  shippedClientImplementation.length === 0
+    ? 'client.js is the only shipped Client implementation'
+    : JSON.stringify(shippedClientImplementation),
 )
 
 // --- summary ------------------------------------------------------------------

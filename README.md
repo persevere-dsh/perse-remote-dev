@@ -1,100 +1,35 @@
-# perse-remote-dev — remote development for DSH.
+# Persevere with DSH — PC remote connections
 
-**perse-remote-dev** is a DSH plugin that puts a remote development workspace inside
-the harness: it inventories your hosts and their link state, browses and creates
-directories over ssh, opens remote DSH tunnels with token URLs, opens projects on the
-remote side, and drives the **rd-core** batch review chain (review → apply → reject →
-rollback) from the browser.
+The `perse-remote-dev` plugin now follows the user-approved native DSH design: a connection-settings entry in the existing sidebar, with no independent chat, task canvas, project-tools page or code-review page. DSH owns its native conversation and composer.
 
-Part of **Persevere with DSH** — a collection of DSH plugins published under the short
-name **perse** (`` `perse` = persevere ``).
+The plugin registers verified remote workspaces and sessions with DSH's native external-session backend. DSH owns the conversation, composer, event source, and session presentation. This integration requires the matching patched DSH 0.2.1 core API; with an upstream runtime that lacks that API, connection settings still work and the plugin reports that native sessions require the patched core.
 
----
+## Flow
 
-## What it does
+Generate a short-lived link on the controlled computer's `perse-remote` management page. In the controlling DSH sidebar open **远程连接**, paste the link, inspect its local preview and explicitly confirm. Then select the remote host/project/session in the native sidebar, or create a session with the project’s new-session button. Write in the ordinary DSH composer. Manage saved connections, disconnect, forget or revoke this device. Device credentials remain in private Node-side storage, never in browser state or URLs.
 
-| Area | Guarantee |
-|------|-----------|
-| **Host inventory + link state** | Lists the configured hosts, reads and updates the effective configuration, and reports one host's reachability/link state. |
-| **ssh directory browsing** | Lists a remote directory and creates a directory, over the configured ssh connection — no bare HTTP route of its own. |
-| **Remote DSH tunnels** | Opens a tunnel to the remote DSH, returns the token URL to reach it, lists the live tunnels, and closes one on demand. |
-| **Remote project open** | Opens a project on the remote side and records the choice in the `remote-dev` settings namespace. |
-| **rd-core batch review** | Reads batch status, fetches the batch, applies the approved files, rejects files with a comment, and rolls back to an approved baseline ref. |
+The local authenticated DSH owner Remote calls the plugin's Node bridge, which uses the canonical Perse 1.x JSON-RPC `/rpc` protocol with an Authorization header. Pairing uses the same format as iOS. No extra listener, automatic tunnel, local model re-execution or copied remote workspace is introduced. The old token-URL routes are retired; existing legacy settings are not deleted.
 
-The host half registers the `remoteDev` typed Remote namespace — 15 methods:
-`listTargets`, `readConfiguration`, `updateConfiguration`, `describe`,
-`listDirectory`, `createDirectory`, `openTunnel`, `listTunnels`, `closeTunnel`,
-`openProject`, `reviewStatus`, `reviewBatch`, `reviewApply`, `reviewReject`,
-`reviewRollback`. The browser half renders it in the conversation, settings,
-sidebar and layout slots.
-
-## Install
-
-Build and pack first — the plugin is installed from a tarball, **not** from a
-directory link:
+## Build
 
 ```sh
-npm install        # build tooling (TypeScript, tsdown, the Typert generator)
-npm run pack       # build + `npm pack --workspace perse-remote-dev`
-                   # npm prints the tarball path it produced
-
-dsh plugin --profile web add <path/to/perse-remote-dev-0.1.0.tgz>
+npm ci
+npm run setup:dsh-native -- --source /path/to/perse-dsh-native
+npm test
+npm run pack
+dsh plugin --profile web add ./perse-remote-dev-0.3.0.tgz
 ```
 
-> **Do not** install with a directory path (`dsh plugin --profile web add ./`).
-> The loader resolves the package by its name and expects the generated Typert
-> artifacts (`lib/typert.host.js`, `lib/typert.remote-client.js`) to sit next to
-> the compiled entry. A directory link does not provide that layout and the
-> plugin will fail to load.
+The setup command validates the isolated DSH 0.2.1 source packages and links only their built type/runtime packages into this development checkout. `PERSE_DSH_SOURCE_ROOT` can be used instead of `--source`. It does not modify an installed DSH runtime or profile. The build uses the 0.2.1 Typert generator and protocol. Node >=22 is required. The installable plugin tarball is prebuilt; users do not run this development setup command.
 
-## Develop
+Canonical specifications live in `perse-ios-app/specs/001..003` and PC revision B in `specs/004-pc-remote-control`; packaged mirrors have verified hashes. `PERSE_REMOTE_CANONICAL_ROOT` selects an explicit canonical repository. The package builds independently of an absent canonical checkout using frozen mirrors.
 
-```sh
-npm run typecheck          # tsc -b tsconfig.host.json  (emits lib/types)
-npm run codegen            # regenerate lib/typert.* from the annotated source
-npm run bundle             # tsdown -> lib/index.js (host half)
-npm run bundle:client      # tsdown --config tsdown.client.config.ts -> client.js
-npm test                   # builds, then runs verify-generated + verify-client-bundle + verify-host-surface
-```
+## Modules
 
-`@deepseek-ai/cordis`, `@deepseek-ai/dsh-typert-protocol` and
-`@deepseek-ai/schemastery` stay unbundled on purpose: the host supplies those
-peers, so the Remote layer and the settings seam share one module instance — a
-second copy silently disables the Remote layer. `zod` also stays a bare
-specifier, but it is a real dependency of this package rather than a peer: the
-host face resolves the copy installed next to it, while the browser bundle
-inlines a private one.
+- `src/pc/`: private profiles, pairing and exact remote transport.
+- `src/client/native-sessions/`: native SessionFace/event conversion, generation and dispatch receipts.
+- `src/client/connections/`: connection-only controller and race/error handling.
+- `src/client/pc-ui/`: connection settings, no second native session UI.
+- `src/client/index.ts`: official sidebar/main registration, leaving `main.conversation` untouched.
 
-## Driving the Remote API
-
-The host half is served inside the Connection trust fence, so every request carries
-the session cookie. The wire envelope is a JSON `POST` to `/api/<namespace>/<method>`:
-
-```json
-{ "type": "client-request", "rpcId": "1", "method": "remoteDev/describe",
-  "payload": { "args": { "request": { "includeEndpoints": true } } } }
-```
-
-Two fields are easy to get wrong: `rpcId` is a **string**, and `method` is the
-**full endpoint id** (`<namespace>/<name>`, e.g. `remoteDev/describe`) rather than
-the bare method name. A malformed envelope still answers `HTTP 200` with
-`ok:false` and code `gateway/bad-request`, which reads like a plugin fault but is
-only the envelope. Failures raised by the plugin itself come back as `ok:false`
-with a `remote-dev/<reason>` code.
-
-## Requirements
-
-- Node.js 22+
-- DSH with `@deepseek-ai/cordis` ^4.0.2, `@deepseek-ai/dsh-typert-protocol` ^0.1.5-rc.2
-  and `@deepseek-ai/schemastery` ^3.18.2
-- `@deepseek-ai/cordis`, `@deepseek-ai/dsh-typert-protocol` and
-  `@deepseek-ai/schemastery` must be provided by the host, so the Remote layer
-  (and the settings seam) shares one module instance.
-
-## License
-
-MIT — © Xilong Liu. See [`LICENSE`](./LICENSE).
-
----
-
-<sub>Part of Persevere with DSH</sub>
+Previous custom workflow/rendering modules were removed. Existing browser draft storage is not read, migrated or deleted. Current candidate status and acceptance boundaries are in [Native DSH status](docs/pc-native-status.md); historical UI evidence does not verify the current candidate. [中文说明](README.zh.md).

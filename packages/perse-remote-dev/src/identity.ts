@@ -9,7 +9,7 @@
  * listing, a created directory, a resolved review bundle) it mints an HMAC over
  * the exact identity fields with a per-instance random secret. Mutating verbs
  * recompute the HMAC from the identity they were handed. A token minted for
- * (`host-a`, `/Users/x`) therefore never validates for (`host-b`, `/Users/x`),
+ * (`host-a`, `/tmp/project`) therefore never validates for (`host-b`, `/tmp/project`),
  * and the failure is `remote-dev/location-mismatch`.
  */
 

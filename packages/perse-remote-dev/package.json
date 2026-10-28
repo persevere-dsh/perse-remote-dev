@@ -1,8 +1,11 @@
 {
   "name": "perse-remote-dev",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "perse-remote-dev: remote development for DSH, for Persevere with DSH — host inventory and link state, ssh directory browsing and mkdir, remote DSH tunnels with token URLs, remote project open, and rd-core batch review; host-side typed remote namespace remoteDev",
+  "engines": {
+    "node": ">=22"
+  },
+  "description": "perse-remote-dev: PC connection settings and native DSH remote sessions through the private owner-Remote bridge to Perse Remote 1.2",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -28,8 +31,9 @@
   },
   "files": [
     "lib/index.js",
-    "lib/types/**/*.js",
-    "lib/types/**/*.d.ts",
+    "lib/types/index.d.ts",
+    "lib/types/types.d.ts",
+    "lib/types/types.js",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
@@ -37,7 +41,11 @@
     "client.js",
     "engine/rd-sync.sh",
     "cordis.patch.yml",
-    "README.md"
+    "LICENSE",
+    "README.md",
+    "README.zh.md",
+    "docs/**/*.md",
+    "docs/**/*.json"
   ],
   "dsh": {
     "bundle": {
@@ -45,12 +53,17 @@
     },
     "client": {
       "platform": "web",
+      "external": [
+        "@deepseek-ai/dsh-api-session-controller/client",
+        "@deepseek-ai/dsh-typert-protocol"
+      ],
       "inject": [
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-ui-layout"
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-api-session-controller"
       ]
     }
   },
@@ -58,12 +71,19 @@
     "build": "cd ../.. && npm run build"
   },
   "dependencies": {
+    "ws": "^8.22.0",
     "zod": "^4"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "^0.2.1-rc.2",
     "@deepseek-ai/schemastery": "^3.18.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-api-session-controller": {
+      "optional": true
+    }
   },
   "license": "MIT"
 }
