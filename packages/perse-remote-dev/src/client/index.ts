@@ -6,9 +6,10 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import remoteDevRemote from 'perse-remote-dev/remote'
 import { createPcConnectionController } from './connections/index.ts'
-import { PC_CONNECTION_LOCALE, PcConnectionSettings, PcPanelIcon, pcConnectionLocale } from './pc-ui/index.ts'
+import { PC_CONNECTION_LOCALE, LegacyConfigSettings, PcConnectionSettings, PcPanelIcon, pcConnectionLocale } from './pc-ui/index.ts'
 import { PcNativeSessionIntegration } from './native-sessions/integration.ts'
 import type { ExternalSessionsRegistry } from './native-sessions/core-types.ts'
 import type { PcRemote } from './connections/types.ts'
@@ -66,6 +67,12 @@ function applyPcUi(ctx: Context): void {
     },
     PcPanelIcon,
   ))
+
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section', id: 'remote-dev-legacy-import', order: 25,
+    label: () => t('legacyImport'), locale: PC_CONNECTION_LOCALE,
+    inject: () => ({ remote }),
+  }, LegacyConfigSettings))
 
   ctx.effect(() => () => {
     // Tear down plugin-local connection state; slot hook bindings leave with the slot fiber.

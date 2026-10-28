@@ -19,10 +19,12 @@
     "bundle": "tsdown",
     "bundle:client": "tsdown --config tsdown.client.config.ts",
     "pack": "npm run build && npm pack --workspace perse-remote-dev",
-    "test": "npm run build && node scripts/verify-generated.mjs && node scripts/verify-client-bundle.mjs && node scripts/verify-host-surface.mjs && node --experimental-transform-types --test test/pc-*.mjs",
+    "test": "npm run build && node scripts/verify-generated.mjs && node scripts/verify-client-bundle.mjs && node scripts/verify-host-surface.mjs && node scripts/verify-packed-consumer.mjs && node --experimental-transform-types --test test/pc-*.mjs",
+    "test:native-legacy-config": "node scripts/verify-native-legacy-config.mjs",
     "verify:generated": "node scripts/verify-generated.mjs",
     "verify:client": "node scripts/verify-client-bundle.mjs",
     "verify:surface": "node scripts/verify-host-surface.mjs",
+    "verify:pack-consumer": "node scripts/verify-packed-consumer.mjs",
     "test:pc-ui": "vitest run test/pc-ui.native.test.tsx"
   },
   "devDependencies": {

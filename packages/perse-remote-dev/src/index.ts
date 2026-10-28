@@ -44,15 +44,16 @@ import {
 import { DECODE_PATH, SSH_PROBE_FLAGS, SshExecutionError, foldHosts, parseSshHosts, sshScript } from './ssh.ts'
 import type { FoldedSshHost, SshEndpoint } from './ssh.ts'
 import {
+  CONFIG_ENTRY_ID,
   MISSING_HINT,
   REVIEW_HUB_HINT,
   RemoteWorkspaceSettingsSchema,
-  SETTINGS_NS,
   decisionsPath,
   migrateTargetsToHosts,
 } from './settings.ts'
-import type { RemoteWorkspaceSettingsDocument, SettingsScope } from './settings.ts'
+import type { RemoteWorkspaceSettingsConfig, RemoteWorkspaceSettingsDocument } from './settings.ts'
 import { TunnelManager } from './tunnels.ts'
+import { legacyConfigSources, planLegacyConfig, previewLegacyConfig, readLegacyConfig } from './legacy-config.ts'
 import { PcBridge } from './pc/bridge.ts'
 import type {
   RemoteCloseTunnelRequest,
@@ -60,6 +61,10 @@ import type {
   RemoteConfigurationUpdate,
   RemoteConfigurationUpdateValue,
   RemoteConfigurationValue,
+  LegacyConfigApplyRequest,
+  LegacyConfigApplyValue,
+  LegacyConfigPreviewRequest,
+  LegacyConfigPreviewValue,
   RemoteDecisionRecord,
   RemoteDescribeRequest,
   RemoteDirectoryEntry,
@@ -173,6 +178,20 @@ interface TargetChain {
   readonly missing: string[]
 }
 
+/** DSH 0.2.1 SettingsForms surface used to persist profile-owned Config edits. */
+interface NativeSettingsForms {
+  update(ns: string, patch: object, expectedRevision?: number): Promise<void>
+  describe(options?: { readonly redactSecrets?: boolean }): readonly {
+    readonly ns: string
+    readonly revision: number
+    readonly user?: unknown
+  }[]
+}
+
+interface NativeProfileContext {
+  readonly home: string
+}
+
 /**
  * Host face of the remote-development workspace plugin.
  */
@@ -182,40 +201,46 @@ export class RemoteWorkspaceService extends TypertRemoteService {
    * descriptors this package's `./typert` artifact registers.
    */
   static inject = ['typert']
+  static Config = RemoteWorkspaceSettingsSchema
 
   private readonly host: Context
+  private readonly config: RemoteWorkspaceSettingsConfig
   private readonly signer = new IdentitySigner()
   private readonly tunnels: TunnelManager
   private readonly pcBridge = new PcBridge()
-  private scope: SettingsScope | undefined
+  private settings: NativeSettingsForms | undefined
+  private profileHome: string | undefined
   private hostCache: { readonly at: number; readonly hosts: FoldedSshHost[] } | undefined
   private probeCache: { readonly at: number; readonly states: Map<string, RemoteLinkState> } | undefined
   private revision: string | undefined
 
   /** @param ctx - Host context. */
-  constructor(ctx: Context) {
+  constructor(ctx: Context, config: RemoteWorkspaceSettingsConfig) {
     // The generator requires the service key and namespace to be *string
     // literals* here (TypertAnalysisError: "Gateway service key must be a
     // string literal"); the SERVICE_KEY/NAMESPACE constants below must stay in
     // step with these two literals.
     super(ctx, 'remoteDev', { namespace: 'remoteDev' })
     this.host = ctx
+    this.config = config
     this.tunnels = new TunnelManager()
-    this.host.inject(['settings'], (settingsCtx) => {
-      const settings = (settingsCtx as { settings?: { register(ns: string, schema: unknown): SettingsScope } }).settings
-      if (settings === undefined || typeof settings.register !== 'function') {
-        console.error('[perse-remote-dev] settings 服务不可用，配置面将报 remote-dev/settings-unavailable')
+    this.host.inject(['settings', 'profileContext'], (settingsCtx) => {
+      const injected = settingsCtx as Context & {
+        readonly settings?: NativeSettingsForms
+        readonly profileContext?: NativeProfileContext
+      }
+      const settings = injected.settings
+      const profileContext = injected.profileContext
+      if (typeof profileContext?.home === 'string' && profileContext.home !== '') this.profileHome = profileContext.home
+      if (settings === undefined || typeof settings.update !== 'function') {
+        console.error('[perse-remote-dev] DSH SettingsForms 不可用；profile Config 可读取，但配置更新会返回 remote-dev/settings-unavailable')
         return
       }
-      try {
-        const handle = settings.register(SETTINGS_NS, RemoteWorkspaceSettingsSchema)
-        this.scope = handle
-        settingsCtx.effect(() => () => {
-          if (this.scope === handle) this.scope = undefined
-        }, 'remote-dev.settings')
-      } catch (error) {
-        console.error('[perse-remote-dev] settings 命名空间注册失败：', error)
-      }
+      this.settings = settings
+      settingsCtx.effect(() => () => {
+        if (this.settings === settings) this.settings = undefined
+        if (this.profileHome === profileContext?.home) this.profileHome = undefined
+      }, 'remote-dev.settings-forms')
     })
     this.host.effect(() => () => {
       this.tunnels.dispose()
@@ -333,7 +358,6 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   @Remote
   async readConfiguration(request: RemoteConfigurationRequest, signal: AbortSignal): Promise<RemoteConfigurationValue> {
     signal.throwIfAborted()
-    this.requireScope()
     const document = this.readDocument()
     const { hosts, migrated } = this.configuredHosts()
     const chain = this.resolveChain()
@@ -383,15 +407,69 @@ export class RemoteWorkspaceService extends TypertRemoteService {
     if (problems.length > 0) {
       throw new RemoteError('remote-dev/config-invalid', problems.join('；'), { problems })
     }
-    const scope = this.requireScope()
+    const settings = this.requireSettings()
     const patch: Record<string, unknown> = { hosts: request.hosts }
     if (request.projectPath !== '') patch['workspace'] = request.projectPath
     if (request.mDir !== '') patch['mDir'] = request.mDir
     if (request.hub !== '') patch['hub'] = request.hub
     if (request.enginePath !== '') patch['enginePath'] = request.enginePath
-    await scope.update(patch)
+    await settings.update(CONFIG_ENTRY_ID, patch)
     const chain = this.resolveChain()
     return { configured: chain.missing.length === 0, missing: chain.missing }
+  }
+
+  /** Inspect a legacy Settings importer file without returning any stored values. */
+  @Remote
+  async legacyConfigPreview(
+    request: LegacyConfigPreviewRequest,
+    signal: AbortSignal,
+  ): Promise<LegacyConfigPreviewValue> {
+    signal.throwIfAborted()
+    const profileHome = this.requireProfileHome()
+    const sources = await legacyConfigSources(profileHome)
+    if (request.source === undefined && sources.length !== 1) {
+      return { sources, importableFields: [], conflictFields: [], unsupportedFields: [], canApply: false }
+    }
+    const source = request.source ?? sources[0]
+    if (source === undefined || !sources.includes(source)) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', '所选旧配置文件不存在或不可用', { reason: 'source unavailable' })
+    }
+    const document = await readLegacyConfig(profileHome, source)
+    const preview = previewLegacyConfig(document, this.requireSettings().describe())
+    return { ...preview, sources }
+  }
+
+  /** Apply the exact bytes reviewed by legacyConfigPreview into the active native profile. */
+  @Remote
+  async legacyConfigApply(
+    request: LegacyConfigApplyRequest,
+    signal: AbortSignal,
+  ): Promise<LegacyConfigApplyValue> {
+    signal.throwIfAborted()
+    const document = await readLegacyConfig(this.requireProfileHome(), request.source)
+    if (!/^[0-9a-f]{64}$/.test(request.sha256) || document.sha256 !== request.sha256) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', '来源文件在预览后发生变化，请重新预览', { reason: 'source changed' })
+    }
+    if (document.unsupportedFields.length > 0) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', '旧配置包含当前版本不支持的字段；未写入任何内容', {
+        reason: 'unsupported fields', unsupportedFields: document.unsupportedFields,
+      })
+    }
+    const settings = this.requireSettings()
+    const descriptors = settings.describe()
+    const descriptor = descriptors.find(row => row.ns === CONFIG_ENTRY_ID)
+    if (descriptor === undefined) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', '当前 profile 未启用远程开发配置项', { reason: 'entry unavailable' })
+    }
+    const plan = planLegacyConfig(document, descriptors)
+    if (plan.preview.conflictFields.length > 0) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', 'profile 中已有不同配置；未写入任何内容', {
+        reason: 'profile conflicts', conflictFields: plan.preview.conflictFields,
+      })
+    }
+    const importedFields = Object.keys(plan.patch).sort()
+    if (importedFields.length > 0) await settings.update(CONFIG_ENTRY_ID, plan.patch, plan.revision)
+    return { source: request.source, importedFields, alreadyAppliedFields: plan.alreadyAppliedFields }
   }
 
   /**
@@ -742,22 +820,33 @@ export class RemoteWorkspaceService extends TypertRemoteService {
 
   // ── settings / target chain ─────────────────────────────────────────────
 
-  private requireScope(): SettingsScope {
-    if (this.scope === undefined) {
+  private requireSettings(): NativeSettingsForms {
+    if (this.settings === undefined) {
       throw new RemoteError(
         'remote-dev/settings-unavailable',
-        'settings 服务尚未就绪（本 profile 未挂载 dsh-settings-file，或注册失败）',
+        '当前 DSH profile 未挂载可写的 SettingsForms 服务，无法持久化远程开发配置。',
         {},
       )
     }
-    return this.scope
+    return this.settings
+  }
+
+  private requireProfileHome(): string {
+    if (this.profileHome === undefined) {
+      throw new RemoteError('remote-dev/legacy-config-invalid', '当前 DSH profile 目录不可用，无法读取旧配置', { reason: 'profile home unavailable' })
+    }
+    return this.profileHome
   }
 
   private readDocument(): RemoteWorkspaceSettingsDocument {
-    const scope = this.scope
-    if (scope === undefined) return {}
-    const raw = scope.get() as RemoteWorkspaceSettingsDocument | undefined
-    return raw ?? {}
+    return {
+      enginePath: this.config.enginePath.get(),
+      hosts: this.config.hosts.get(),
+      targets: this.config.targets.get(),
+      workspace: this.config.workspace.get(),
+      mDir: this.config.mDir.get(),
+      hub: this.config.hub.get(),
+    }
   }
 
   /** Configured host records, with the legacy `targets[]` shape folded in on read. */
@@ -783,7 +872,11 @@ export class RemoteWorkspaceService extends TypertRemoteService {
       || (legacy !== undefined ? legacy.workspace : '')
       || ''
     const mDir = document.mDir ?? ''
-    const hub = document.hub ?? (legacy !== undefined ? legacy.hub : '') ?? ''
+    // Native Config supplies an empty-string default. Treat that as unset so
+    // old targets[] rows remain readable; a non-empty top-level value wins.
+    const hub = document.hub !== undefined && document.hub !== ''
+      ? document.hub
+      : legacy?.hub ?? ''
     const verifyCmd = legacy !== undefined ? legacy.verifyCmd : ''
     const missing: string[] = []
     if (host === '') missing.push('主机（请到设置 › 远程开发添加）')

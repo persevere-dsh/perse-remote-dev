@@ -223,6 +223,30 @@ window.__ModuleLoader__.load({
 			"cordisModule": zod.z.string().readonly().describe("Module URL the running process bound for Cordis."),
 			"node": zod.z.string().readonly()
 		});
+		let perse_remote_dev_remoteDev_legacyConfigApply_parameter_0$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigApply_parameter_0$schema = () => perse_remote_dev_remoteDev_legacyConfigApply_parameter_0$schema$value ??= zod.z.object({
+			"source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly(),
+			"sha256": zod.z.string().readonly()
+		});
+		let perse_remote_dev_remoteDev_legacyConfigApply_result$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigApply_result$schema = () => perse_remote_dev_remoteDev_legacyConfigApply_result$schema$value ??= zod.z.object({
+			"source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly(),
+			"importedFields": zod.z.array(zod.z.string()).readonly(),
+			"alreadyAppliedFields": zod.z.array(zod.z.string()).readonly()
+		});
+		let perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0$schema = () => perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0$schema$value ??= zod.z.object({ "source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly().optional() });
+		let perse_remote_dev_remoteDev_legacyConfigPreview_result$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigPreview_result$schema = () => perse_remote_dev_remoteDev_legacyConfigPreview_result$schema$value ??= zod.z.object({
+			"sources": zod.z.array(zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")])).readonly(),
+			"source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly().optional(),
+			"sourcePath": zod.z.string().readonly().optional(),
+			"sha256": zod.z.string().readonly().optional(),
+			"importableFields": zod.z.array(zod.z.string()).readonly(),
+			"conflictFields": zod.z.array(zod.z.string()).readonly(),
+			"unsupportedFields": zod.z.array(zod.z.string()).readonly(),
+			"canApply": zod.z.boolean().readonly()
+		});
 		let perse_remote_dev_remoteDev_listDirectory_parameter_0$schema$value;
 		const perse_remote_dev_remoteDev_listDirectory_parameter_0$schema = () => perse_remote_dev_remoteDev_listDirectory_parameter_0$schema$value ??= zod.z.object({
 			"target": zod.z.object({ "hostId": zod.z.string().readonly().describe("`local`, a configured host id, its `fromAlias`, or an ssh-config alias.") }).readonly(),
@@ -654,6 +678,13 @@ window.__ModuleLoader__.load({
 		});
 		let perse_remote_dev_remoteDev_describe_parameter_0_strict$schema$value;
 		const perse_remote_dev_remoteDev_describe_parameter_0_strict$schema = () => perse_remote_dev_remoteDev_describe_parameter_0_strict$schema$value ??= zod.z.strictObject({ "includeEndpoints": zod.z.boolean().readonly().describe("Include the endpoint list this live instance carries markers for.") });
+		let perse_remote_dev_remoteDev_legacyConfigApply_parameter_0_strict$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigApply_parameter_0_strict$schema = () => perse_remote_dev_remoteDev_legacyConfigApply_parameter_0_strict$schema$value ??= zod.z.strictObject({
+			"source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly(),
+			"sha256": zod.z.string().readonly()
+		});
+		let perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0_strict$schema$value;
+		const perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0_strict$schema = () => perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0_strict$schema$value ??= zod.z.strictObject({ "source": zod.z.union([zod.z.literal("settings.yaml"), zod.z.literal("settings.yaml.imported")]).readonly().optional() });
 		let perse_remote_dev_remoteDev_listDirectory_parameter_0_strict$schema$value;
 		const perse_remote_dev_remoteDev_listDirectory_parameter_0_strict$schema = () => perse_remote_dev_remoteDev_listDirectory_parameter_0_strict$schema$value ??= zod.z.strictObject({
 			"target": zod.z.strictObject({ "hostId": zod.z.string().readonly().describe("`local`, a configured host id, its `fromAlias`, or an ssh-config alias.") }).readonly(),
@@ -844,7 +875,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 508,
+						"line": 586,
 						"column": 3
 					}
 				},
@@ -966,7 +997,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 441,
+						"line": 519,
 						"column": 9
 					}
 				},
@@ -1054,7 +1085,171 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 725,
+						"line": 803,
+						"column": 9
+					}
+				},
+				"remoteDev/legacyConfigApply": {
+					service: "remoteDev",
+					description: "Apply the exact bytes reviewed by legacyConfigPreview into the active native profile.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						source: "json",
+						codec: {
+							mode: "strict",
+							typeSymbol: "perse-remote-dev/types#LegacyConfigApplyRequest",
+							create: perse_remote_dev_remoteDev_legacyConfigApply_parameter_0$schema,
+							jsonSchema: {
+								"type": "object",
+								"properties": {
+									"source": {
+										"type": "string",
+										"enum": ["settings.yaml", "settings.yaml.imported"]
+									},
+									"sha256": { "type": "string" }
+								},
+								"required": ["source", "sha256"],
+								"additionalProperties": true
+							}
+						},
+						strictCodec: {
+							mode: "strict",
+							typeSymbol: "perse-remote-dev/types#LegacyConfigApplyRequest",
+							create: perse_remote_dev_remoteDev_legacyConfigApply_parameter_0_strict$schema,
+							jsonSchema: {
+								"type": "object",
+								"properties": {
+									"source": {
+										"type": "string",
+										"enum": ["settings.yaml", "settings.yaml.imported"]
+									},
+									"sha256": { "type": "string" }
+								},
+								"required": ["source", "sha256"],
+								"additionalProperties": false
+							}
+						}
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "perse-remote-dev/types#LegacyConfigApplyValue",
+						create: perse_remote_dev_remoteDev_legacyConfigApply_result$schema,
+						jsonSchema: {
+							"type": "object",
+							"properties": {
+								"source": {
+									"type": "string",
+									"enum": ["settings.yaml", "settings.yaml.imported"]
+								},
+								"importedFields": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"alreadyAppliedFields": {
+									"type": "array",
+									"items": { "type": "string" }
+								}
+							},
+							"required": [
+								"source",
+								"importedFields",
+								"alreadyAppliedFields"
+							],
+							"additionalProperties": true
+						}
+					},
+					sourceLocation: {
+						"file": "packages/perse-remote-dev/src/index.ts",
+						"line": 444,
+						"column": 9
+					}
+				},
+				"remoteDev/legacyConfigPreview": {
+					service: "remoteDev",
+					description: "Inspect a legacy Settings importer file without returning any stored values.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						source: "json",
+						codec: {
+							mode: "strict",
+							typeSymbol: "perse-remote-dev/types#LegacyConfigPreviewRequest",
+							create: perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0$schema,
+							jsonSchema: {
+								"type": "object",
+								"properties": { "source": {
+									"type": "string",
+									"enum": ["settings.yaml", "settings.yaml.imported"]
+								} },
+								"required": [],
+								"additionalProperties": true
+							}
+						},
+						strictCodec: {
+							mode: "strict",
+							typeSymbol: "perse-remote-dev/types#LegacyConfigPreviewRequest",
+							create: perse_remote_dev_remoteDev_legacyConfigPreview_parameter_0_strict$schema,
+							jsonSchema: {
+								"type": "object",
+								"properties": { "source": {
+									"type": "string",
+									"enum": ["settings.yaml", "settings.yaml.imported"]
+								} },
+								"required": [],
+								"additionalProperties": false
+							}
+						}
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "perse-remote-dev/types#LegacyConfigPreviewValue",
+						create: perse_remote_dev_remoteDev_legacyConfigPreview_result$schema,
+						jsonSchema: {
+							"type": "object",
+							"properties": {
+								"sources": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"enum": ["settings.yaml", "settings.yaml.imported"]
+									}
+								},
+								"source": {
+									"type": "string",
+									"enum": ["settings.yaml", "settings.yaml.imported"]
+								},
+								"sourcePath": { "type": "string" },
+								"sha256": { "type": "string" },
+								"importableFields": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"conflictFields": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"unsupportedFields": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"canApply": { "type": "boolean" }
+							},
+							"required": [
+								"sources",
+								"importableFields",
+								"conflictFields",
+								"unsupportedFields",
+								"canApply"
+							],
+							"additionalProperties": true
+						}
+					},
+					sourceLocation: {
+						"file": "packages/perse-remote-dev/src/index.ts",
+						"line": 423,
 						"column": 9
 					}
 				},
@@ -1233,7 +1428,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 407,
+						"line": 485,
 						"column": 9
 					}
 				},
@@ -1393,7 +1588,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 292,
+						"line": 317,
 						"column": 9
 					}
 				},
@@ -1478,7 +1673,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 495,
+						"line": 573,
 						"column": 3
 					}
 				},
@@ -1638,7 +1833,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 471,
+						"line": 549,
 						"column": 9
 					}
 				},
@@ -1737,7 +1932,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 483,
+						"line": 561,
 						"column": 9
 					}
 				},
@@ -1811,7 +2006,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 280,
+						"line": 305,
 						"column": 9
 					}
 				},
@@ -1869,7 +2064,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 251,
+						"line": 276,
 						"column": 3
 					}
 				},
@@ -1923,7 +2118,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 257,
+						"line": 282,
 						"column": 9
 					}
 				},
@@ -1977,7 +2172,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 265,
+						"line": 290,
 						"column": 9
 					}
 				},
@@ -2041,7 +2236,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 245,
+						"line": 270,
 						"column": 3
 					}
 				},
@@ -2112,7 +2307,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 238,
+						"line": 263,
 						"column": 3
 					}
 				},
@@ -2203,7 +2398,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 230,
+						"line": 255,
 						"column": 9
 					}
 				},
@@ -2263,7 +2458,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 273,
+						"line": 298,
 						"column": 9
 					}
 				},
@@ -2500,7 +2695,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 334,
+						"line": 359,
 						"column": 9
 					}
 				},
@@ -2689,7 +2884,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 572,
+						"line": 650,
 						"column": 9
 					}
 				},
@@ -2891,7 +3086,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 546,
+						"line": 624,
 						"column": 9
 					}
 				},
@@ -3049,7 +3244,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 674,
+						"line": 752,
 						"column": 9
 					}
 				},
@@ -3182,7 +3377,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 697,
+						"line": 775,
 						"column": 9
 					}
 				},
@@ -3340,7 +3535,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 527,
+						"line": 605,
 						"column": 9
 					}
 				},
@@ -3559,7 +3754,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 369,
+						"line": 393,
 						"column": 9
 					}
 				}
@@ -4065,7 +4260,18 @@ window.__ModuleLoader__.load({
 				previewHost: "主机",
 				previewId: "主机 ID",
 				networkMode: "网络",
-				permissionSummary: "权限"
+				permissionSummary: "权限",
+				legacyImport: "导入旧远程开发配置",
+				legacyIntro: "显式预览并导入原 settings.yaml 中的 remote-dev 段。预览只显示字段名，不显示主机或凭据内容；旧文件会完整保留。",
+				legacyPreview: "预览旧配置",
+				legacyApply: "确认并写入当前 profile",
+				legacySource: "来源文件",
+				legacyFields: "可导入字段",
+				legacyConflicts: "冲突字段",
+				legacyUnsupported: "不支持的字段",
+				legacyApplied: "旧配置已写入当前 profile。",
+				legacySourcesBoth: "找到两个候选文件，请分别选择并预览。",
+				legacyNoSource: "原生 profile 目录中没有可导入的旧配置文件。"
 			},
 			en: {
 				panel: "Remote connection",
@@ -4127,7 +4333,18 @@ window.__ModuleLoader__.load({
 				previewHost: "Host",
 				previewId: "Host ID",
 				networkMode: "Network",
-				permissionSummary: "Permissions"
+				permissionSummary: "Permissions",
+				legacyImport: "Import legacy remote settings",
+				legacyIntro: "Preview and explicitly import the remote-dev section from the original settings.yaml. The preview shows field names only; host values and credentials are not displayed. The source file stays intact.",
+				legacyPreview: "Preview legacy settings",
+				legacyApply: "Confirm and write to this profile",
+				legacySource: "Source file",
+				legacyFields: "Importable fields",
+				legacyConflicts: "Conflicting fields",
+				legacyUnsupported: "Unsupported fields",
+				legacyApplied: "Legacy settings were written to this profile.",
+				legacySourcesBoth: "Two candidate files were found. Select and preview each explicitly.",
+				legacyNoSource: "No legacy settings file was found under the native profile directory."
 			}
 		};
 		const h = react.createElement;
@@ -4281,6 +4498,68 @@ window.__ModuleLoader__.load({
 				height: 14,
 				rx: 2
 			}), h("path", { d: "M8 9h8M8 13h5M8 17h8" }));
+		}
+		function LegacyConfigSettings(props) {
+			const { remote, t } = props;
+			const [preview, setPreview] = react.useState();
+			const [busy, setBusy] = react.useState(false);
+			const [message, setMessage] = react.useState("");
+			const [failure, setFailure] = react.useState("");
+			const runPreview = async (selected) => {
+				setBusy(true);
+				setFailure("");
+				setMessage("");
+				try {
+					const result = await remote.legacyConfigPreview(selected === void 0 ? {} : { source: selected });
+					if (!result.ok) {
+						setFailure(result.error.message);
+						setPreview(void 0);
+						return;
+					}
+					setPreview(result.value);
+				} catch (error) {
+					setFailure(error instanceof Error ? error.message : t("operationError"));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const apply = async () => {
+				if (preview?.canApply !== true || preview.source === void 0 || preview.sha256 === void 0) return;
+				if (typeof window !== "undefined" && !window.confirm(t("legacyApply"))) return;
+				setBusy(true);
+				setFailure("");
+				setMessage("");
+				try {
+					const result = await remote.legacyConfigApply({
+						source: preview.source,
+						sha256: preview.sha256
+					});
+					if (!result.ok) {
+						setFailure(result.error.message);
+						return;
+					}
+					setMessage(t("legacyApplied"));
+					setPreview(void 0);
+				} catch (error) {
+					setFailure(error instanceof Error ? error.message : t("operationError"));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const h = react.createElement;
+			const button = (label, click, disabled = false) => h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "outline",
+				size: "sm",
+				onClick: click,
+				disabled
+			}, label);
+			const candidateButtons = preview !== void 0 && preview.source === void 0 ? preview.sources.map((item) => button(item, () => {
+				runPreview(item);
+			}, busy)) : null;
+			return h("section", { "data-legacy-settings-import": "1" }, h("h2", null, t("legacyImport")), h("p", null, t("legacyIntro")), message ? h("p", { role: "status" }, message) : null, failure ? h("p", { role: "alert" }, failure) : null, button(t("legacyPreview"), () => {
+				setPreview(void 0);
+				runPreview(void 0);
+			}, busy), candidateButtons, preview?.source === void 0 && preview?.sources.length === 0 ? h("p", null, t("legacyNoSource")) : null, preview?.source === void 0 && (preview?.sources.length ?? 0) > 1 ? h("p", null, t("legacySourcesBoth")) : null, preview?.source !== void 0 ? h("div", { "data-legacy-preview": preview.source }, h("p", null, `${t("legacySource")}: ${preview.sourcePath ?? preview.source}`), h("p", null, `${t("legacyFields")}: ${preview.importableFields.join(", ") || "—"}`), h("p", null, `${t("legacyConflicts")}: ${preview.conflictFields.join(", ") || "0"}`), preview.unsupportedFields.length > 0 ? h("p", { role: "alert" }, `${t("legacyUnsupported")}: ${preview.unsupportedFields.join(", ")}`) : null, button(t("legacyApply"), () => void apply(), busy || !preview.canApply)) : null);
 		}
 		// node_modules/@deepseek-ai/dsh-typert-protocol/lib/index.js
 		/** The one Remote failure class shared by owners, the Gateway, and consumers. */
@@ -6340,6 +6619,14 @@ window.__ModuleLoader__.load({
 				order: 4,
 				label: () => t("panel")
 			}, PcPanelIcon));
+			ctx.slots.inject("settings.section", () => ctx.slots.register({
+				name: "settings.section",
+				id: "remote-dev-legacy-import",
+				order: 25,
+				label: () => t("legacyImport"),
+				locale: PC_CONNECTION_LOCALE,
+				inject: () => ({ remote })
+			}, LegacyConfigSettings));
 			ctx.effect(() => () => {
 				controller.dispose();
 				nativeSessions.dispose();

@@ -8,7 +8,9 @@ The plugin registers verified remote workspaces and sessions with DSH's native e
 
 Generate a short-lived link on the controlled computer's `perse-remote` management page. In the controlling DSH sidebar open **远程连接**, paste the link, inspect its local preview and explicitly confirm. Then select the remote host/project/session in the native sidebar, or create a session with the project’s new-session button. Write in the ordinary DSH composer. Manage saved connections, disconnect, forget or revoke this device. Device credentials remain in private Node-side storage, never in browser state or URLs.
 
-The local authenticated DSH owner Remote calls the plugin's Node bridge, which uses the canonical Perse 1.x JSON-RPC `/rpc` protocol with an Authorization header. Pairing uses the same format as iOS. No extra listener, automatic tunnel, local model re-execution or copied remote workspace is introduced. The old token-URL routes are retired; existing legacy settings are not deleted.
+The local authenticated DSH owner Remote calls the plugin's Node bridge, which uses the canonical Perse 1.x JSON-RPC `/rpc` protocol with an Authorization header. Pairing uses the same format as iOS. No extra listener, automatic tunnel, local model re-execution or copied remote workspace is introduced. The old token-URL routes are retired; safe SSH and rd-core configuration remains supported.
+
+If the old `remote-dev` section is in the active native profile's `settings.yaml` or `settings.yaml.imported`, open DSH Settings and choose **Import legacy remote settings**. Preview shows the source path and field names, never host values or credentials. The plugin writes only after explicit confirmation, through DSH SettingsForms into the existing `perse-remote-dev` profile entry. The source file remains byte-for-byte intact. Existing profile conflicts and unknown keys block the write; legacy `targets[]` rows remain supported. Startup never migrates this data automatically.
 
 ## Build
 
@@ -29,7 +31,7 @@ Canonical specifications live in `perse-ios-app/specs/001..003` and PC revision 
 - `src/pc/`: private profiles, pairing and exact remote transport.
 - `src/client/native-sessions/`: native SessionFace/event conversion, generation and dispatch receipts.
 - `src/client/connections/`: connection-only controller and race/error handling.
-- `src/client/pc-ui/`: connection settings, no second native session UI.
-- `src/client/index.ts`: official sidebar/main registration, leaving `main.conversation` untouched.
+- `src/client/pc-ui/`: connection settings and the explicit legacy-config action in native Settings; no second native session UI.
+- `src/client/index.ts`: official sidebar/main and Settings section registration, leaving `main.conversation` untouched.
 
 Previous custom workflow/rendering modules were removed. Existing browser draft storage is not read, migrated or deleted. Current candidate status and acceptance boundaries are in [Native DSH status](docs/pc-native-status.md); historical UI evidence does not verify the current candidate. [中文说明](README.zh.md).

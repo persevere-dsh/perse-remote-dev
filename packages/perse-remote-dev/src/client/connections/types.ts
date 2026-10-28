@@ -1,10 +1,15 @@
 import type {
+  LegacyConfigApplyRequest,
+  LegacyConfigApplyValue,
+  LegacyConfigPreviewRequest,
+  LegacyConfigPreviewValue,
   PcConnectValue,
   PcCallValue,
   PcPairPreviewValue,
   PcProfileView,
   PcProfilesValue,
 } from 'perse-remote-dev/types'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 
 export type PcOutcome<T> =
   | { readonly ok: true; readonly value: T }
@@ -21,6 +26,8 @@ export interface PcFailure {
 export type PcProfile = PcProfileView
 
 export interface PcRemote {
+  legacyConfigPreview(request: LegacyConfigPreviewRequest): Promise<RemoteResult<LegacyConfigPreviewValue>>
+  legacyConfigApply(request: LegacyConfigApplyRequest): Promise<RemoteResult<LegacyConfigApplyValue>>
   pcProfiles(request: {}): Promise<PcRemoteOutcome<PcProfilesValue>>
   pcPairPreview(request: { readonly link: string }): Promise<PcRemoteOutcome<PcPairPreviewValue>>
   pcPairConfirm(request: { readonly confirmationId: string; readonly deviceName: string }): Promise<PcRemoteOutcome<PcConnectValue>>

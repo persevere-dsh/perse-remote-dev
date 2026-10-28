@@ -175,6 +175,13 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     }
     /** This DSH runtime has no host-aware native-session extension. */
     'remote-dev/pc-native-session-unavailable': { readonly requiredApi: string }
+    /** A legacy settings file was invalid, changed after preview, or conflicts with this profile. */
+    'remote-dev/legacy-config-invalid': {
+      readonly reason: string
+      readonly conflictFields?: readonly string[]
+      readonly unsupportedFields?: readonly string[]
+      readonly reasonCode?: string
+    }
   }
 }
 
@@ -438,6 +445,39 @@ export interface RemoteConfigurationUpdate {
 export interface RemoteConfigurationUpdateValue {
   readonly configured: boolean
   readonly missing: readonly string[]
+}
+
+/** One of the two native Settings importer files under the active profile home. */
+export type LegacyConfigSource = 'settings.yaml' | 'settings.yaml.imported'
+
+/** Explicitly select a source; omitting it previews only when there is one candidate. */
+export interface LegacyConfigPreviewRequest {
+  readonly source?: LegacyConfigSource
+}
+
+/** Redacted migration preview. No imported configuration values are included. */
+export interface LegacyConfigPreviewValue {
+  readonly sources: readonly LegacyConfigSource[]
+  readonly source?: LegacyConfigSource
+  readonly sourcePath?: string
+  readonly sha256?: string
+  readonly importableFields: readonly string[]
+  readonly conflictFields: readonly string[]
+  readonly unsupportedFields: readonly string[]
+  readonly canApply: boolean
+}
+
+/** SHA-256 from the explicit preview, required to prevent applying changed source bytes. */
+export interface LegacyConfigApplyRequest {
+  readonly source: LegacyConfigSource
+  readonly sha256: string
+}
+
+/** Result of applying a source document into the active profile patch. */
+export interface LegacyConfigApplyValue {
+  readonly source: LegacyConfigSource
+  readonly importedFields: readonly string[]
+  readonly alreadyAppliedFields: readonly string[]
 }
 
 /** Input for listing targets. */

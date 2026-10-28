@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { HostObservable, InjectFace, PropsLocale, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PcConnectionController, PcConnectionSnapshot } from '../connections/index.ts'
+import type { LegacyConfigPreviewValue } from '../../types.ts'
+import type { PcConnectionController, PcConnectionSnapshot, PcRemote } from '../connections/index.ts'
 import { PC_CONNECTION_CSS } from './styles.ts'
 
 export const PC_CONNECTION_LOCALE = 'perse.remote.connection'
@@ -16,6 +17,8 @@ export type PcConnectionLocaleKey =
   | 'revokeConfirm' | 'revokedNotice' | 'forget' | 'forgetConfirm' | 'forgotNotice' | 'footnote'
   | 'checkedHost' | 'host' | 'address' | 'network' | 'permissions' | 'expires' | 'diagnostics'
   | 'previewHost' | 'previewId' | 'networkMode' | 'permissionSummary'
+  | 'legacyImport' | 'legacyIntro' | 'legacyPreview' | 'legacyApply' | 'legacySource' | 'legacyFields'
+  | 'legacyConflicts' | 'legacyUnsupported' | 'legacyApplied' | 'legacySourcesBoth' | 'legacyNoSource'
 
 export const pcConnectionLocale = {
   zh: {
@@ -36,6 +39,10 @@ export const pcConnectionLocale = {
     footnote: '主机身份已核对；本地 DSH 会话不受影响。', checkedHost: '已验证连接', host: '主机', address: '地址', network: '网络',
     permissions: '权限', expires: '有效期', diagnostics: '诊断详情', previewHost: '主机', previewId: '主机 ID',
     networkMode: '网络', permissionSummary: '权限',
+    legacyImport: '导入旧远程开发配置', legacyIntro: '显式预览并导入原 settings.yaml 中的 remote-dev 段。预览只显示字段名，不显示主机或凭据内容；旧文件会完整保留。',
+    legacyPreview: '预览旧配置', legacyApply: '确认并写入当前 profile', legacySource: '来源文件', legacyFields: '可导入字段',
+    legacyConflicts: '冲突字段', legacyUnsupported: '不支持的字段', legacyApplied: '旧配置已写入当前 profile。',
+    legacySourcesBoth: '找到两个候选文件，请分别选择并预览。', legacyNoSource: '原生 profile 目录中没有可导入的旧配置文件。',
   },
   en: {
     panel: 'Remote connection', title: 'Remote connection', intro: 'Manage pairing and connections to remote hosts.', connected: 'Verified connection',
@@ -55,6 +62,10 @@ export const pcConnectionLocale = {
     footnote: 'Host identity verified; local DSH sessions are unaffected.', checkedHost: 'Verified connection', host: 'Host', address: 'Address', network: 'Network',
     permissions: 'Permissions', expires: 'Expires', diagnostics: 'Diagnostics', previewHost: 'Host', previewId: 'Host ID',
     networkMode: 'Network', permissionSummary: 'Permissions',
+    legacyImport: 'Import legacy remote settings', legacyIntro: 'Preview and explicitly import the remote-dev section from the original settings.yaml. The preview shows field names only; host values and credentials are not displayed. The source file stays intact.',
+    legacyPreview: 'Preview legacy settings', legacyApply: 'Confirm and write to this profile', legacySource: 'Source file', legacyFields: 'Importable fields',
+    legacyConflicts: 'Conflicting fields', legacyUnsupported: 'Unsupported fields', legacyApplied: 'Legacy settings were written to this profile.',
+    legacySourcesBoth: 'Two candidate files were found. Select and preview each explicitly.', legacyNoSource: 'No legacy settings file was found under the native profile directory.',
   },
 } satisfies Record<'zh' | 'en', Record<PcConnectionLocaleKey, string>>
 
@@ -210,4 +221,53 @@ export function PcPanelIcon(props: { readonly size?: number }): React.ReactEleme
     h('rect', { x: 4, y: 5, width: 16, height: 14, rx: 2 }), h('path', { d: 'M8 9h8M8 13h5M8 17h8' }))
 }
 
-export { PcConnectionSettings }
+interface LegacySettingsInjected { readonly remote: Pick<PcRemote, 'legacyConfigPreview' | 'legacyConfigApply'> }
+type LegacySettingsProps = InjectFace<LegacySettingsInjected> & PropsLocale<typeof PC_CONNECTION_LOCALE>
+
+function LegacyConfigSettings(props: LegacySettingsProps): React.ReactElement {
+  const { remote, t } = props
+  const [preview, setPreview] = React.useState<LegacyConfigPreviewValue>()
+  const [busy, setBusy] = React.useState(false)
+  const [message, setMessage] = React.useState('')
+  const [failure, setFailure] = React.useState('')
+  const runPreview = async (selected?: 'settings.yaml' | 'settings.yaml.imported'): Promise<void> => {
+    setBusy(true); setFailure(''); setMessage('')
+    try {
+      const result = await remote.legacyConfigPreview(selected === undefined ? {} : { source: selected })
+      if (!result.ok) { setFailure(result.error.message); setPreview(undefined); return }
+      setPreview(result.value)
+    } catch (error) { setFailure(error instanceof Error ? error.message : t('operationError')) }
+    finally { setBusy(false) }
+  }
+  const apply = async (): Promise<void> => {
+    if (preview?.canApply !== true || preview.source === undefined || preview.sha256 === undefined) return
+    if (typeof window !== 'undefined' && !window.confirm(t('legacyApply'))) return
+    setBusy(true); setFailure(''); setMessage('')
+    try {
+      const result = await remote.legacyConfigApply({ source: preview.source, sha256: preview.sha256 })
+      if (!result.ok) { setFailure(result.error.message); return }
+      setMessage(t('legacyApplied')); setPreview(undefined)
+    } catch (error) { setFailure(error instanceof Error ? error.message : t('operationError')) }
+    finally { setBusy(false) }
+  }
+  const h = React.createElement
+  const button = (label: string, click: () => void, disabled = false) => h(Button, { variant: 'outline', size: 'sm', onClick: click, disabled }, label)
+  const candidateButtons = preview !== undefined && preview.source === undefined
+    ? preview.sources.map(item => button(item, () => { void runPreview(item) }, busy)) : null
+  return h('section', { 'data-legacy-settings-import': '1' },
+    h('h2', null, t('legacyImport')), h('p', null, t('legacyIntro')),
+    message ? h('p', { role: 'status' }, message) : null,
+    failure ? h('p', { role: 'alert' }, failure) : null,
+    button(t('legacyPreview'), () => { setPreview(undefined); void runPreview(undefined) }, busy),
+    candidateButtons,
+    preview?.source === undefined && preview?.sources.length === 0 ? h('p', null, t('legacyNoSource')) : null,
+    preview?.source === undefined && (preview?.sources.length ?? 0) > 1 ? h('p', null, t('legacySourcesBoth')) : null,
+    preview?.source !== undefined ? h('div', { 'data-legacy-preview': preview.source },
+      h('p', null, `${t('legacySource')}: ${preview.sourcePath ?? preview.source}`),
+      h('p', null, `${t('legacyFields')}: ${preview.importableFields.join(', ') || '—'}`),
+      h('p', null, `${t('legacyConflicts')}: ${preview.conflictFields.join(', ') || '0'}`),
+      preview.unsupportedFields.length > 0 ? h('p', { role: 'alert' }, `${t('legacyUnsupported')}: ${preview.unsupportedFields.join(', ')}`) : null,
+      button(t('legacyApply'), () => void apply(), busy || !preview.canApply)) : null)
+}
+
+export { LegacyConfigSettings, PcConnectionSettings }

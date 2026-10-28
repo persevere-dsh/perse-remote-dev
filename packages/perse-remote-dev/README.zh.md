@@ -25,8 +25,10 @@ dsh plugin --profile web add ./perse-remote-dev-0.3.0.tgz
 
 开发 setup 会校验隔离 DSH 0.2.1 源码及编译产物，并只在当前开发仓库中链接会话类型包；也可用 `PERSE_DSH_SOURCE_ROOT` 指定目录。它不会改安装版 DSH 或用户配置。正式插件 tarball 已预构建，无需运行 setup。Node 要求 22+，Typert generator 和 protocol 均固定为 0.2.1-rc.2。
 
+若此前旧配置保存在原生 profile 目录的 `settings.yaml` 或 `settings.yaml.imported`，可在 DSH「设置」中选择「导入旧远程开发配置」。预览只显示来源路径、字段名和冲突/不支持字段，不显示主机值或凭据。只有用户再次确认后才会写入现有 `perse-remote-dev` profile；原文件保持原字节。已有 profile 字段冲突或出现未知字段时不会写入，需先处理冲突或升级插件。`targets[]` 会保留并继续用于兼容旧 SSH/rd-core 配置。插件启动不会自动迁移文件。
+
 权威远程协议来自 `perse-ios-app/specs/001..003`，PC revision B 在 `specs/004-pc-remote-control`。包内附协议镜像与哈希；`PERSE_REMOTE_CANONICAL_ROOT` 可指定规范仓库。
 
-`src/client/native-sessions` 负责原生 SessionFace、事件转换和代次/发送回执。模块：`src/pc` 为私有凭证与协议桥接；`src/client/connections` 为连接状态；`src/client/pc-ui` 只包含连接设置页；`src/client/index.ts` 仅注册连接入口。旧浏览器草稿数据没有读取、迁移或删除。旧 token URL 打开入口已停用，旧 SSH/rd-core 配置未破坏。
+`src/client/native-sessions` 负责原生 SessionFace、事件转换和代次/发送回执。模块：`src/pc` 为私有凭证与协议桥接；`src/client/connections` 为连接状态；`src/client/pc-ui` 包含连接页和原生设置中的旧配置导入动作；`src/client/index.ts` 注册连接和设置入口。旧浏览器草稿数据没有读取、迁移或删除。旧 token URL 打开入口已停用，安全 SSH/rd-core 配置方法保留。
 
 当前候选状态与验收边界见 [原生 DSH 状态](docs/pc-native-status.md)。历史界面证据不能证明当前候选已验收。Dashboard、Proof、Updater、CUA 保持独立项目。

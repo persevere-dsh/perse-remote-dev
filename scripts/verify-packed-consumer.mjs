@@ -1,0 +1,174 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative, resolve, sep } from 'node:path'
+import { tmpdir } from 'node:os'
+import ts from 'typescript'
+
+const repoRoot = resolve(new URL('..', import.meta.url).pathname)
+const pluginRoot = join(repoRoot, 'packages/perse-remote-dev')
+const installedModules = join(repoRoot, 'node_modules')
+const temporaryRoot = mkdtempSync(join(tmpdir(), 'perse-remote-packed-consumer-'))
+try {
+  const positivePackage = await packWorkspacePlugin()
+  const positive = await installPackedConsumer(positivePackage, 'positive')
+  assert.equal(positive.diagnostics.length, 0, formatDiagnostics(positive.diagnostics))
+  assert.ok(positive.packageManifest.dependencies['@deepseek-ai/cosmokit'], 'the published manifest must declare its public type dependency')
+
+  // Negative control: repack an isolated projection with that one direct
+  // declaration removed. Its transitive parent packages still retain their
+  // own nested, real dependencies, so this fails only if the plugin's public
+  // declaration imports an undeclared package directly.
+  const negativeSource = join(temporaryRoot, 'negative-source')
+  cpSync(positive.packageRoot, negativeSource, { recursive: true, dereference: true })
+  const negativeManifest = readJson(join(negativeSource, 'package.json'))
+  delete negativeManifest.dependencies['@deepseek-ai/cosmokit']
+  writeFileSync(join(negativeSource, 'package.json'), `${JSON.stringify(negativeManifest, null, 2)}\n`)
+  const negativePackage = await packDirectory(negativeSource, join(temporaryRoot, 'negative-pack'))
+  const negative = await installPackedConsumer(negativePackage, 'negative')
+  assert.ok(
+    negative.diagnostics.some((diagnostic) => diagnostic.code === 2307 && diagnostic.message.includes("'@deepseek-ai/cosmokit'")),
+    `negative control did not expose TS2307 for @deepseek-ai/cosmokit:\n${formatDiagnostics(negative.diagnostics)}`,
+  )
+
+  console.log(`[packed-consumer] ${positive.archiveName}: ${positive.fileCount} files; TypeScript ${ts.version} strict consumer declaration graph resolved`)
+  console.log('[packed-consumer] negative control: removing @deepseek-ai/cosmokit from the isolated manifest produces TS2307 as expected')
+} finally {
+  rmSync(temporaryRoot, { recursive: true, force: true })
+}
+
+async function packWorkspacePlugin() {
+  const packRoot = join(temporaryRoot, 'positive-pack')
+  mkdirSync(packRoot)
+  const packed = await packDirectory(pluginRoot, packRoot, true)
+  assert.ok(packed.fileList.some((file) => file === 'lib/types/settings.d.ts'), 'TGZ omits lib/types/settings.d.ts')
+  return packed
+}
+
+async function packDirectory(directory, packDestination, workspace = false) {
+  mkdirSync(packDestination, { recursive: true })
+  const args = workspace
+    ? ['pack', '--workspace', 'perse-remote-dev', '--pack-destination', packDestination, '--ignore-scripts', '--json']
+    : ['pack', directory, '--pack-destination', packDestination, '--ignore-scripts', '--json']
+  const json = execFileSync('npm', args, { cwd: repoRoot, encoding: 'utf8' })
+  const [packed] = JSON.parse(json)
+  assert.ok(packed?.filename, 'npm pack did not report a tarball')
+  return {
+    archivePath: join(packDestination, packed.filename),
+    archiveName: packed.filename,
+    fileCount: packed.files.length,
+    fileList: packed.files.map((file) => file.path),
+  }
+}
+
+async function installPackedConsumer(archive, label) {
+  const consumerRoot = join(temporaryRoot, `${label}-consumer`)
+  const modulesRoot = join(consumerRoot, 'node_modules')
+  mkdirSync(modulesRoot, { recursive: true })
+  execFileSync('tar', ['-xzf', archive.archivePath, '-C', modulesRoot], { stdio: 'ignore' })
+  const packageRoot = join(modulesRoot, 'package')
+  const installedPackageRoot = join(modulesRoot, 'perse-remote-dev')
+  renameSync(packageRoot, installedPackageRoot)
+
+  const packageManifest = readJson(join(installedPackageRoot, 'package.json'))
+  const direct = { ...packageManifest.dependencies, ...packageManifest.peerDependencies }
+  for (const name of Object.keys(direct).sort()) {
+    const optionalPeer = packageManifest.peerDependenciesMeta?.[name]?.optional === true
+    projectPackage(name, installedModules, modulesRoot, new Map(), optionalPeer)
+  }
+
+  const consumerFile = join(consumerRoot, 'consumer.ts')
+  writeFileSync(consumerFile, [
+    "import type { RemoteWorkspaceService } from 'perse-remote-dev'",
+    'declare const service: RemoteWorkspaceService',
+    "declare const signal: Parameters<RemoteWorkspaceService['readConfiguration']>[1]",
+    'void service.readConfiguration({ includeCandidates: false }, signal)',
+    '',
+  ].join('\n'))
+  const compilerOptions = {
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    strict: true,
+    noEmit: true,
+    skipLibCheck: false,
+    allowImportingTsExtensions: true,
+    types: [],
+  }
+  const program = ts.createProgram([consumerFile], compilerOptions)
+  const diagnostics = ts.getPreEmitDiagnostics(program).map((diagnostic) => ({
+    code: diagnostic.code,
+    message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+    file: diagnostic.file?.fileName,
+    start: diagnostic.start,
+  }))
+  return { archiveName: archive.archiveName, fileCount: archive.fileCount, packageRoot: installedPackageRoot, packageManifest, diagnostics }
+}
+
+function projectPackage(name, fromRoot, installRoot, seen, optional) {
+  const actualRoot = resolveInstalledPackage(name, fromRoot)
+  if (actualRoot === undefined) {
+    if (optional) return
+    throw new Error(`declared dependency ${name} is not installed by the clean npm-ci workspace`)
+  }
+  const actualRealRoot = realpathSync(actualRoot)
+  const destination = join(installRoot, ...name.split('/'))
+  const key = `${name}\0${actualRealRoot}`
+  if (existsSync(destination)) return
+  const known = seen.get(key)
+  if (known !== undefined) {
+    mkdirSync(dirname(destination), { recursive: true })
+    symlinkSync(known, destination, 'dir')
+    return
+  }
+
+  mkdirSync(dirname(destination), { recursive: true })
+  cpSync(actualRealRoot, destination, {
+    recursive: true,
+    dereference: true,
+    filter: (sourcePath) => {
+      const rel = relative(actualRealRoot, sourcePath)
+      return rel === '' || (!rel.split(sep).includes('node_modules') && !rel.split(sep).includes('.git'))
+    },
+  })
+  seen.set(key, destination)
+  const manifest = readJson(join(destination, 'package.json'))
+  const descendants = {
+    ...manifest.dependencies,
+    ...manifest.optionalDependencies,
+    ...manifest.peerDependencies,
+  }
+  for (const child of Object.keys(descendants).sort()) {
+    const childOptional = manifest.optionalDependencies?.[child] !== undefined
+      || manifest.peerDependenciesMeta?.[child]?.optional === true
+    projectPackage(child, actualRealRoot, join(destination, 'node_modules'), seen, childOptional)
+  }
+}
+
+function resolveInstalledPackage(name, fromRoot) {
+  try {
+    const resolver = createRequire(join(fromRoot, 'package.json'))
+    const entry = resolver.resolve(name)
+    let directory = dirname(entry)
+    while (directory !== dirname(directory)) {
+      const manifestPath = join(directory, 'package.json')
+      if (existsSync(manifestPath)) {
+        const manifest = readJson(manifestPath)
+        if (manifest.name === name) return directory
+      }
+      directory = dirname(directory)
+    }
+  } catch {}
+  if (fromRoot !== installedModules) return resolveInstalledPackage(name, installedModules)
+  return undefined
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, 'utf8'))
+}
+
+function formatDiagnostics(diagnostics) {
+  return diagnostics.map((diagnostic) => `${diagnostic.file ?? '<compiler>'}: TS${diagnostic.code} ${diagnostic.message}`).join('\n')
+}
