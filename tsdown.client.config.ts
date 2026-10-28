@@ -24,32 +24,39 @@
 //     }
 //   });
 //
-// Externals are exactly the shell baseline `PLATFORM_MODULES`; the
-// baseline is implicit for every dynamic bundle, so the package manifest
-// declares no `dsh.client.external`. Everything else — including the generated
-// contribution `perse-remote-dev/remote` and its `zod` — is privately bundled
-// (silence = private copy, so a dependency absent from the externals list is
-// inlined).
+// `PLATFORM_MODULES` below is copied verbatim from the frozen shell seed at
+// packages/client/web/src/platform.ts (DSH b9e77c1, SHA-256
+// 5d76ea268c94a98d5938623a1928211862861700db177ec088dc66110871a079).
+// The one package-specific external is the dynamically injected session
+// controller row, declared in dsh.client.external. Typert protocol is an
+// INLINE_SAFE value owner in the official DSH client build: it is bundled into
+// this client, and must not require a module-table entry that the shell never
+// seeds. The Host bundle keeps its separate protocol external.
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
 
 /** The browser module also stamps this id; it must equal `manifest.name`. */
 const PACKAGE_ID = 'perse-remote-dev'
 
-/** Frozen shell module table (verbatim). */
+/** Frozen shell module table (verbatim from the source and hash above). */
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-typert-protocol',
+  'zod',
+  '@tanstack/react-virtual',
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
   '@deepseek-ai/dsh-client-ui-dockkit',
-  '@deepseek-ai/dsh-api-session-controller/client',
 ]
+
+/** Package-specific dynamic-row externals, resolved by the frozen DSH loader. */
+const packageManifest = JSON.parse(readFileSync(new URL('packages/perse-remote-dev/package.json', import.meta.url), 'utf8'))
+const DYNAMIC_CLIENT_EXTERNALS = packageManifest.dsh?.client?.external ?? []
 
 /** The package's generated contribution, inlined into the bundle. */
 const REMOTE_CONTRIBUTION = fileURLToPath(
@@ -73,7 +80,7 @@ export default defineConfig({
   // rewrites it to `undefined` and rolldown falls back to auto-detecting the
   // very `tsconfig.json` we need it to ignore.
   tsconfig: 'tsconfig.tsdown.json',
-  deps: { neverBundle: PLATFORM_MODULES },
+  deps: { neverBundle: [...PLATFORM_MODULES, ...DYNAMIC_CLIENT_EXTERNALS] },
   alias: {
     'perse-remote-dev/remote': REMOTE_CONTRIBUTION,
   },

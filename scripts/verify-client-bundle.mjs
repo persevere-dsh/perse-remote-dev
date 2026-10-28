@@ -4,8 +4,8 @@
  *
  * Proves, without a browser, that the built browser bundle is a well-formed
  * `window.__ModuleLoader__` registration whose externals are the frozen shell
- * baseline plus the DSH session API, and that Remote is inlined
- * (including its private `zod`) rather than left as a bare specifier.
+ * seed plus the injected DSH session API, while Typert's value implementation
+ * remains inline and Remote is not left as a bare specifier.
  *
  * Checks
  *   1. `client.js` exists and its first non-empty content is
@@ -16,12 +16,12 @@
  *      sides** and the file then ends with `return module.exports;}});`
  *      (rolldown reflows the configured one-line `footer` across lines L7746-7748,
  *      so a raw `grep` for `return module.exports; } });` is a false negative);
- *   4. every `require("…")` specifier belongs to the shared runtime table
- *      `PLATFORM_MODULES`, which is asserted to match
- *      `tsdown.client.config.ts`;
+ *   4. every `require("…")` resolves through the shell seed table in
+ *      `tsdown.client.config.ts` or an explicitly declared dynamic-row external;
  *   5. the inlined Remote contribution carries the `remoteDev` namespace and all
  *      15 frozen method names;
- *   6. `zod` is a private inline copy — `require("zod")` must appear nowhere.
+ *   6. `zod` is supplied by the frozen shell platform seed and remains an
+ *      external — `require("zod")` must be present in the Client bundle.
  *   7. removed project/review presentation markers do not appear in the active
  *      Client bundle; the generated Remote descriptors may retain their RPCs.
  *
@@ -42,21 +42,6 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const WORKSPACE_ROOT = resolve(HERE, '..')
 const DEFAULT_CLIENT = resolve(WORKSPACE_ROOT, 'packages', 'perse-remote-dev', 'client.js')
 const DEFAULT_CONFIG = resolve(WORKSPACE_ROOT, 'tsdown.client.config.ts')
-
-/** Frozen shell modules plus shared DSH runtime peers — must equal the config's copy. */
-const PLATFORM_MODULES = [
-  'react',
-  'react/jsx-runtime',
-  'react-dom',
-  'react-dom/client',
-  '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-typert-protocol',
-  '@deepseek-ai/dsh-client-store',
-  '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-dockkit',
-  '@deepseek-ai/dsh-api-session-controller/client',
-]
 
 /** The package id the bundle must stamp; must equal `manifest.name`. */
 const PACKAGE_ID = 'perse-remote-dev'
@@ -149,41 +134,47 @@ const required = [
     [...source.matchAll(/\brequire\s*\(\s*["']([^"'\n]+)["']\s*\)/g)].map((match) => match[1]),
   ),
 ].sort()
-const foreign = required.filter((specifier) => !PLATFORM_MODULES.includes(specifier))
-check(
-  `4a. every require("…") specifier is in the ${PLATFORM_MODULES.length}-entry shared runtime table`,
-  foreign.length === 0,
-  `subset of ${JSON.stringify(PLATFORM_MODULES)}`,
-  foreign.length === 0
-    ? `found ${JSON.stringify(required)} — all baseline`
-    : `non-baseline specifiers: ${JSON.stringify(foreign)} (all found: ${JSON.stringify(required)})`,
-)
-
 const configText = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
 const configBlock = configText.match(/PLATFORM_MODULES\s*=\s*\[([\s\S]*?)\]/)
-const configModules = configBlock === null
+const platformModules = configBlock === null
   ? []
   : [...configBlock[1].matchAll(/["']([^"']+)["']/g)].map((match) => match[1])
-check(
-  '4b. the shared runtime table still equals tsdown.client.config.ts PLATFORM_MODULES',
-  configModules.length === PLATFORM_MODULES.length
-    && configModules.slice().sort().join('\u0000') === PLATFORM_MODULES.slice().sort().join('\u0000'),
-  `${PLATFORM_MODULES.length} entries ${JSON.stringify(PLATFORM_MODULES)}`,
-  `${configModules.length} entries ${JSON.stringify(configModules)} (from ${configPath})`,
-)
-
 const packageManifestPath = resolve(WORKSPACE_ROOT, 'packages', 'perse-remote-dev', 'package.json')
 const packageManifest = JSON.parse(readFileSync(packageManifestPath, 'utf8'))
 const declaredDshExternals = packageManifest.dsh?.client?.external ?? []
+const declaredDshInjects = packageManifest.dsh?.client?.inject ?? []
+const runtimeModules = new Set([...platformModules, ...declaredDshExternals])
+const foreign = required.filter((specifier) => !runtimeModules.has(specifier))
+check(
+  `4a. every require("…") resolves from the ${platformModules.length}-entry shell seed or a declared dynamic-row external`,
+  foreign.length === 0,
+  `subset of ${JSON.stringify([...runtimeModules].sort())}`,
+  foreign.length === 0
+    ? `found ${JSON.stringify(required)} — all seeded or declared dynamic externals`
+    : `unresolved specifiers: ${JSON.stringify(foreign)} (all found: ${JSON.stringify(required)})`,
+)
+
+check(
+  '4b. frozen shell seed vocabulary is unique and excludes Typert protocol',
+  platformModules.length > 0
+    && platformModules.length === new Set(platformModules).size
+    && !platformModules.includes('@deepseek-ai/dsh-typert-protocol'),
+  'unique frozen shell seed words, with Typert protocol absent',
+  `${platformModules.length} entries ${JSON.stringify(platformModules)} (from ${configPath})`,
+)
+
 const requiredDshExternals = [
   '@deepseek-ai/dsh-api-session-controller/client',
 ]
 check(
-  '4c. manifest externalizes the DSH session API and shared Typert protocol runtime',
-  requiredDshExternals.every(specifier => declaredDshExternals.includes(specifier))
-    && declaredDshExternals.includes('@deepseek-ai/dsh-typert-protocol'),
+  '4c. manifest externalizes the injected session-controller row; Typert protocol stays inline',
+  declaredDshExternals.length === requiredDshExternals.length
+    && requiredDshExternals.every(specifier => declaredDshExternals.includes(specifier))
+    && declaredDshInjects.includes('@deepseek-ai/dsh-api-session-controller')
+    && !declaredDshExternals.includes('@deepseek-ai/dsh-typert-protocol')
+    && !required.includes('@deepseek-ai/dsh-typert-protocol'),
   JSON.stringify(requiredDshExternals),
-  JSON.stringify(declaredDshExternals),
+  `manifest externals=${JSON.stringify(declaredDshExternals)}, bundle requires=${JSON.stringify(required)}`,
 )
 
 // 5 ---------------------------------------------------------------------------
@@ -208,10 +199,10 @@ const zodRequires = [...source.matchAll(/\brequire\s*\(\s*["']zod["']\s*\)/g)].m
 )
 const zodBareImports = [...source.matchAll(/\bfrom\s*["']zod["']/g)].map((match) => match[0])
 check(
-  '6. zod is privately inlined (no require("zod") / from "zod")',
-  zodRequires.length === 0 && zodBareImports.length === 0,
-  'zero bare zod specifiers',
-  `require("zod") × ${zodRequires.length}, from "zod" × ${zodBareImports.length}`,
+  '6. zod resolves from the frozen shell platform seed',
+  platformModules.includes('zod') && zodRequires.length > 0 && zodBareImports.length === 0,
+  'zod is a platform seed require, with no ESM bare import',
+  `seed=${platformModules.includes('zod')}, require("zod") × ${zodRequires.length}, from "zod" × ${zodBareImports.length}`,
 )
 
 // 7 ---------------------------------------------------------------------------
