@@ -6,6 +6,7 @@ import { Context } from '@deepseek-ai/cordis'
 const root = new URL('../', import.meta.url)
 const source = readFileSync(new URL('packages/perse-remote-dev/src/client/index.ts', root), 'utf8')
 const manifest = JSON.parse(readFileSync(new URL('packages/perse-remote-dev/package.json', root), 'utf8'))
+const clientBundle = readFileSync(new URL('packages/perse-remote-dev/client.js', root), 'utf8')
 
 test('PC settings waits for DSH sessions activation before checking optional native APIs', async () => {
   const pluginConfig = source.match(/name:\s*'remote-dev-client\/connection-settings',[\s\S]*?inject:\s*\[([^\]]+)\]/)
@@ -39,13 +40,15 @@ test('PC settings waits for DSH sessions activation before checking optional nat
   await ctx.root.fiber.dispose()
 })
 
-test('client manifest injects the DSH API package and externalizes shared runtime peers', () => {
+test('client manifest injects the DSH session API and externalizes only its dynamic module', () => {
   const injected = manifest.dsh.client.inject
   const external = manifest.dsh.client.external
   assert.ok(injected.includes('@deepseek-ai/dsh-api-session-controller'))
   assert.ok(!injected.includes('@deepseek-ai/dsh-api-session-controller/client'))
   assert.ok(external.includes('@deepseek-ai/dsh-api-session-controller/client'))
-  assert.ok(external.includes('@deepseek-ai/dsh-typert-protocol'))
+  assert.ok(!external.includes('@deepseek-ai/dsh-typert-protocol'), 'Typert protocol is inline-safe and is not in the frozen shell seed')
+  assert.match(clientBundle, /require\(["']@deepseek-ai\/dsh-api-session-controller\/client["']\)/, 'the dynamic session-controller row remains an external module')
+  assert.doesNotMatch(clientBundle, /require\(["']@deepseek-ai\/dsh-typert-protocol["']\)/, 'Typert protocol must not be requested as a bare external')
 })
 
 test('old DSH ISessions shapes remain connection-only while the extension registry is accepted', async () => {

@@ -201,7 +201,7 @@ function PcConnectionSettings(props: PcConnectionSettingsProps): React.ReactElem
               if (typeof window !== 'undefined' && window.confirm(t('forgetConfirm'))) void run(() => controller.forgetProfile(profile.profileId), t('forgotNotice'))
             }, 'outline', busy)))
       })),
-    h('p', { className: css.footnote }, t('footnote')))
+    connected ? h('p', { className: css.footnote }, t('footnote')) : null)
 }
 
 export function PcPanelIcon(props: { readonly size?: number }): React.ReactElement {

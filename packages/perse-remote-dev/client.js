@@ -4262,7 +4262,7 @@ window.__ModuleLoader__.load({
 				}, "outline", busy || !isVerifiedActive), button(t("forget"), () => {
 					if (typeof window !== "undefined" && window.confirm(t("forgetConfirm"))) run(() => controller.forgetProfile(profile.profileId), t("forgotNotice"));
 				}, "outline", busy)));
-			})), h("p", { className: css.footnote }, t("footnote")));
+			})), connected ? h("p", { className: css.footnote }, t("footnote")) : null);
 		}
 		function PcPanelIcon(props) {
 			const size = props.size ?? 18;

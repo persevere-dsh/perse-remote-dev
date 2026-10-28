@@ -24,7 +24,7 @@ function makeTranslator(language: 'zh' | 'en') {
   }
 }
 
-function createController() {
+function createController(remoteOverrides: Partial<PcRemote> = {}) {
   const unavailable = async () => ({ ok: false as const, error: new Error('test remote method was not expected') })
   const remote: PcRemote = {
     pcProfiles: unavailable,
@@ -35,6 +35,7 @@ function createController() {
     pcForget: unavailable,
     pcRevoke: unavailable,
     pcCall: unavailable,
+    ...remoteOverrides,
   }
   const controller = createPcConnectionController({ remote })
   let subscribed = 0
@@ -53,6 +54,35 @@ function createController() {
 }
 
 describe('PC connection settings native hook and locale contract', () => {
+  it('shows the identity footnote only while a verified host connection is active', async () => {
+    const profile = {
+      profileId: 'profile-1', endpoint: 'https://host.example', networkMode: 'https' as const,
+      hostId: 'host-1', hostName: 'Test host', deviceId: 'device-1', deviceName: 'This PC',
+      status: 'disconnected' as const,
+    }
+    const source = createController({
+      pcProfiles: async () => ({ ok: true, value: { profiles: [profile] } }),
+      pcConnect: async () => ({
+        ok: true,
+        value: { profileId: profile.profileId, hostId: profile.hostId, generation: 'generation-1', hostInfoJson: JSON.stringify({ id: profile.hostId, name: profile.hostName }) },
+      }),
+    })
+    const view = render(React.createElement(PcConnectionSettings, {
+      controller: source.controller,
+      useConnection: source.useConnection,
+      t: makeTranslator('en'),
+    }))
+
+    expect(view.container.querySelector('.pcConnectionFootnote')).toBeNull()
+    await act(async () => { await source.controller.refreshProfiles() })
+    expect(view.container.querySelector('.pcConnectionFootnote')).toBeNull()
+    await act(async () => { await source.controller.connectProfile(profile.profileId) })
+    expect(view.getByText('Host identity verified; local DSH sessions are unaffected.')).toBeTruthy()
+
+    view.unmount()
+    source.controller.dispose()
+  })
+
   it('subscribes to the controller snapshot and releases it when the panel unmounts', () => {
     const source = createController()
     const view = render(React.createElement(PcConnectionSettings, {
