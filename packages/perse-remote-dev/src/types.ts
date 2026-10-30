@@ -199,6 +199,13 @@ export interface PcProfileView {
   readonly status: 'disconnected' | 'connected' | 'offline' | 'revoked'
   readonly protocolVersion?: string
   readonly verifiedAt?: string
+  /**
+   * True when the saved profile was live at its last verification but this host
+   * process has no verified socket for it yet. The display status stays honest
+   * (`offline` until a live handshake); this flag alone marks the profile
+   * eligible for launch-time auto-reconnect. Absent = not eligible.
+   */
+  readonly autoConnect?: boolean
 }
 
 /** Result of listing locally stored PC connection profiles. */

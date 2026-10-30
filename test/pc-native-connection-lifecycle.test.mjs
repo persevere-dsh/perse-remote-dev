@@ -19,7 +19,10 @@ const { PcNativeSessionIntegration } = await import('../packages/perse-remote-de
 
 const profile = {
   profileId: 'profile-a', endpoint: 'wss://host-a.example/rpc', networkMode: 'https',
-  hostId: 'host-a', hostName: 'Host A', deviceId: 'device-a', deviceName: 'Desk', status: 'connected',
+  hostId: 'host-a', hostName: 'Host A', deviceId: 'device-a', deviceName: 'Desk',
+  // Exactly what the real bridge reports for a profile saved while live but not
+  // yet re-verified in this process: honest offline display + the autoConnect mark.
+  status: 'offline', autoConnect: true,
 }
 const preview = {
   confirmationId: 'pair-handle', hostId: 'host-a', hostName: 'Host A',

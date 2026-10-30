@@ -88,7 +88,11 @@ export class PcBridge {
       const active = this.connections.get(profile.profileId)
       const connected = active !== undefined && active.verified && active.socket.readyState === WebSocket.OPEN
       const status = connected ? 'connected' : profile.status === 'revoked' ? 'revoked' : 'offline'
-      return this.store.view(profile, status)
+      // A profile saved while still live must stay reconnectable after a restart,
+      // even though the display status is honestly downgraded to `offline` until
+      // a fresh verified socket exists in this process.
+      const reconnectable = !connected && profile.status === 'connected'
+      return { ...this.store.view(profile, status), ...(reconnectable ? { autoConnect: true } : {}) }
     })
   }
 

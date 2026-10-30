@@ -36,7 +36,9 @@ const HOST_ID = 'host-a'
 const GENERATION = 'gen-model'
 const profile = {
   profileId: PROFILE_ID, endpoint: 'wss://host-a.example/rpc', networkMode: 'https',
-  hostId: HOST_ID, hostName: 'Host A', deviceId: 'device-a', deviceName: 'Desk', status: 'connected',
+  hostId: HOST_ID, hostName: 'Host A', deviceId: 'device-a', deviceName: 'Desk',
+  // Real bridge shape for a saved-live profile awaiting re-verification.
+  status: 'offline', autoConnect: true,
 }
 
 const modelRow = (id, overrides = {}) => ({

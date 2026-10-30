@@ -441,7 +441,8 @@ window.__ModuleLoader__.load({
 				zod.z.literal("revoked")
 			]).readonly(),
 			"protocolVersion": zod.z.string().readonly().optional(),
-			"verifiedAt": zod.z.string().readonly().optional()
+			"verifiedAt": zod.z.string().readonly().optional(),
+			"autoConnect": zod.z.boolean().readonly().optional().describe("True when the saved profile was live at its last verification but this host process has no verified socket for it yet. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for launch-time auto-reconnect. Absent = not eligible.")
 		})).readonly() });
 		let perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value;
 		const perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema = () => perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value ??= zod.z.object({
@@ -2377,7 +2378,11 @@ window.__ModuleLoader__.load({
 											]
 										},
 										"protocolVersion": { "type": "string" },
-										"verifiedAt": { "type": "string" }
+										"verifiedAt": { "type": "string" },
+										"autoConnect": {
+											"type": "boolean",
+											"description": "True when the saved profile was live at its last verification but this host process has no verified socket for it yet. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for launch-time auto-reconnect. Absent = not eligible."
+										}
 									},
 									"required": [
 										"profileId",
@@ -6731,6 +6736,7 @@ window.__ModuleLoader__.load({
 			return typeof observable.getSnapshot === "function" && typeof observable.subscribe === "function";
 		}
 		// packages/perse-remote-dev/src/client/native-sessions/integration.ts
+		const LOG$1 = "[perse-remote-dev]";
 		/** Connects the settings controller to DSH's optional native external-session registry. */
 		var PcNativeSessionIntegration = class {
 			sessions;
@@ -6833,11 +6839,16 @@ window.__ModuleLoader__.load({
 			}
 			async restoreConnectedProfiles() {
 				const profiles = await this.controller.refreshProfiles();
-				if (this.disposed || !profiles.ok) return;
+				if (this.disposed) return;
+				if (!profiles.ok) {
+					console.warn(LOG$1, `PC 配对配置读取失败：${profiles.failure.code} — ${profiles.failure.message}`);
+					return;
+				}
 				for (const profile of profiles.value) {
-					if (profile.status !== "connected" || this.attemptedRecovery.has(profile.profileId)) continue;
+					if (profile.autoConnect !== true || this.attemptedRecovery.has(profile.profileId)) continue;
 					this.attemptedRecovery.add(profile.profileId);
-					if (!(await this.controller.connectProfile(profile.profileId)).ok) continue;
+					const connected = await this.controller.connectProfile(profile.profileId);
+					if (!connected.ok) console.warn(LOG$1, `主机自动重连失败，保留为离线：profile=${profile.profileId} ${connected.failure.code} — ${connected.failure.message}`);
 				}
 			}
 			sync(snapshot) {

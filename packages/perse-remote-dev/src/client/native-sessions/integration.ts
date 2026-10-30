@@ -6,6 +6,8 @@ import { pcSubmissionReceipts } from './submission-receipts.ts'
 import { hasExternalSessionsApi } from './registry-compat.ts'
 import type { ExternalSessionsRegistry } from './core-types.ts'
 
+const LOG = '[perse-remote-dev]'
+
 /** Connects the settings controller to DSH's optional native external-session registry. */
 export class PcNativeSessionIntegration {
   private readonly sessions: ExternalSessionsRegistry | undefined
@@ -111,14 +113,24 @@ export class PcNativeSessionIntegration {
 
   private async restoreConnectedProfiles(): Promise<void> {
     const profiles = await this.controller.refreshProfiles()
-    if (this.disposed || !profiles.ok) return
+    if (this.disposed) return
+    if (!profiles.ok) {
+      // Surfaced once per activation: a profile store that cannot load must never
+      // fail silently, or the host list stays empty with no trace anywhere.
+      console.warn(LOG, `PC 配对配置读取失败：${profiles.failure.code} — ${profiles.failure.message}`)
+      return
+    }
     for (const profile of profiles.value) {
-      if (profile.status !== 'connected' || this.attemptedRecovery.has(profile.profileId)) continue
+      // The bridge honestly reports a not-yet-verified saved profile as `offline`;
+      // only its autoConnect flag says it was live at the last verification.
+      if (profile.autoConnect !== true || this.attemptedRecovery.has(profile.profileId)) continue
       this.attemptedRecovery.add(profile.profileId)
       // Reverify a previously live bridge socket and obtain a fresh generation;
       // never recreate a Session or replay a prompt during restoration.
       const connected = await this.controller.connectProfile(profile.profileId)
-      if (!connected.ok) continue
+      if (!connected.ok) {
+        console.warn(LOG, `主机自动重连失败，保留为离线：profile=${profile.profileId} ${connected.failure.code} — ${connected.failure.message}`)
+      }
       // connectProfile publishes the accepted connection synchronously. The
       // controller subscription above is the single installation owner; doing
       // another install here would retire that exact generation and its bindings.

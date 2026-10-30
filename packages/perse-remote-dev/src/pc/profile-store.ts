@@ -108,6 +108,9 @@ export class PcProfileStore {
       return parsed
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, profiles: [] }
+      // One structured line naming the file and the failure class, so a stored
+      // profile list that never loads is never a silent black box. Never a token.
+      console.error(`[perse-remote-dev] pc-profile-store load failed file=${file} class=${errorName(error)} reason=${redactReason(error)}`)
       throw error
     }
   }
@@ -142,6 +145,20 @@ export class PcProfileStore {
 function defaultDshHome(): string {
   const configured = process.env.DSH_HOME
   return configured !== undefined && configured !== '' ? configured : join(homedir(), '.dsh')
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error && error.name !== '' ? error.name : typeof error
+}
+
+/** Failure reason safe for one log line: shape/class text only, credentials scrubbed. */
+function redactReason(error: unknown): string {
+  const raw = error instanceof Error ? error.message : `non-error ${typeof error}`
+  return raw
+    .replace(/(?:secret|token|bearer)[=: ]+\S+/gi, '[redacted]')
+    .replace(/[A-Za-z0-9_-]{40,}/g, '[redacted]')
+    .replace(/\s+/g, ' ')
+    .slice(0, 160)
 }
 
 async function assertNoSymlinkPath(path: string): Promise<void> {
