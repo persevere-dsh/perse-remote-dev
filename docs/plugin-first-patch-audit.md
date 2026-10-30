@@ -18,8 +18,8 @@ Decision recorded here: **do not pursue upstreaming.** Keep the extension as our
 
 Verified in `ui-sidebar/src/client/contract/slots.ts` (baseline, via `git show HEAD:`):
 
-- `sidebar.workspaces` is **`{ kind: 'single' }`** (line 42) and is occupied by ui-workspace's own browser. `ui-slots` `register()` throws on a second same-priority registration, and another priority only *shadows* it — which would **replace** the local workspace tree, an N07 violation. A plugin therefore **cannot** add a group inside the browsing region.
-- `sidebar.footer.action` is **`{ kind: 'list' }`** with explicit `order` (line 53) — the official stackable seat below the browsing region, above Settings. This is where the remote group now lives.
+- `sidebar.workspaces` is **`{ kind: 'single' }`** (line 42) and is occupied by ui-workspace's own browser. `ui-slots` `register()` throws on a second same-priority registration, and another priority only *shadows* it — which would **replace** the local workspace tree, an N07 violation. A plugin therefore **cannot** add a group inside the browsing region. *(Correction, 2026-10-30: the patched core added the generic `sidebar.workspaces.secondary` `list` hole (core commit `42aa2bf7`) — a stackable bordered section **below** the local tree inside the browsing region. A plugin still cannot put rows **inside** the tree, but it can now stand beside it.)*
+- `sidebar.footer.action` is **`{ kind: 'list' }`** with explicit `order` (line 53) — the official stackable seat below the browsing region, above Settings. This is where the remote group now lives. *(Correction, 2026-10-30: the owner rejected that placement — 「远程主机位置太靠下了，要和工作区一起，只是分开区分而已」 — and the group moved to `sidebar.workspaces.secondary`.)*
 - `sidebar.panellist` is `{ kind: 'list' }` (line 35). Usable, but first-level navigation is the wrong home for low-frequency connection management, so the plugin stopped using it.
 - The remote badge uses `conversation.session.header.utilities`. `sidebar.session.row.leading` exists as a per-row seat but was not used.
 - `sidebar.workspaces.session.menu.item`, `sidebar.workspaces.session.row.action`, `sidebar.workspaces.directoryFlow` are official per-row seats, but they render *inside* the local browser and cannot express a host-level group.
@@ -31,7 +31,7 @@ The plugin already owns the data these components need: it constructs the backen
 
 Moving B1 into the plugin fixes the three placement problems as a side effect, all plugin-side:
 
-1. the remote group renders through an official stackable sidebar seat with an explicit `order`, so it stops flooding the local session list. The earlier assumption that `sidebar.workspaces` could stack is wrong and is corrected in [the native integration boundary](native-dsh-extension.md): that hole is `kind: 'single'`, declared and occupied by ui-workspace's own browser, and a same-priority registration throws; shadowing it at another priority would replace the local workspace tree;
+1. the remote group renders through an official stackable sidebar seat with an explicit `order`, so it stops flooding the local session list (as of 2026-10-30 that seat is `sidebar.workspaces.secondary`, inside the workspace region below the local tree — see [the native integration boundary](native-dsh-extension.md)). The earlier assumption that `sidebar.workspaces` could stack is wrong and is corrected in [the native integration boundary](native-dsh-extension.md): that hole is `kind: 'single'`, declared and occupied by ui-workspace's own browser, and a same-priority registration throws; shadowing it at another priority would replace the local workspace tree;
 2. session rows render collapsed by default (`N 个会话`), so remote sessions stop flooding the sidebar;
 3. the connection entry leaves the first-level `sidebar.panellist` and becomes a header action of the remote group — connection management is low frequency and does not deserve first-level navigation.
 
