@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Build workspace for perse-remote-dev — an out-of-tree DSH remote-development plugin of Persevere with DSH. The installable package lives in packages/perse-remote-dev.",
+  "description": "Build workspace for perse-remote-dev \u2014 an out-of-tree DSH remote-development plugin of Persevere with DSH. The installable package lives in packages/perse-remote-dev.",
   "workspaces": [
     "packages/*"
   ],
@@ -25,7 +25,8 @@
     "verify:client": "node scripts/verify-client-bundle.mjs",
     "verify:surface": "node scripts/verify-host-surface.mjs",
     "verify:pack-consumer": "node scripts/verify-packed-consumer.mjs",
-    "test:pc-ui": "vitest run test/pc-ui.native.test.tsx test/pc-ui.remote-nav.test.tsx test/pc-ui.remote-badge.test.tsx test/pc-ui.model-seat.test.tsx"
+    "test:pc-ui": "vitest run test/pc-ui.native.test.tsx test/pc-ui.remote-nav.test.tsx test/pc-ui.remote-badge.test.tsx test/pc-ui.model-seat.test.tsx",
+    "verify:remote-e2e": "node scripts/verify-remote-e2e.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
