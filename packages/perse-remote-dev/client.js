@@ -442,7 +442,7 @@ window.__ModuleLoader__.load({
 			]).readonly(),
 			"protocolVersion": zod.z.string().readonly().optional(),
 			"verifiedAt": zod.z.string().readonly().optional(),
-			"autoConnect": zod.z.boolean().readonly().optional().describe("True when the saved profile was live at its last verification but this host process has no verified socket for it yet. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for launch-time auto-reconnect. Absent = not eligible.")
+			"autoConnect": zod.z.boolean().readonly().optional().describe("True when the persisted connection intent is `connected` but this host process has no live verified socket for the profile, and the device grant is not revoked. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for auto-reconnect, so writing down a transport loss (`offline`) never removes that eligibility. The intent itself is the persisted host-side `desiredState` field and is never returned here. Absent = not eligible.")
 		})).readonly() });
 		let perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value;
 		const perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema = () => perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value ??= zod.z.object({
@@ -2381,7 +2381,7 @@ window.__ModuleLoader__.load({
 										"verifiedAt": { "type": "string" },
 										"autoConnect": {
 											"type": "boolean",
-											"description": "True when the saved profile was live at its last verification but this host process has no verified socket for it yet. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for launch-time auto-reconnect. Absent = not eligible."
+											"description": "True when the persisted connection intent is `connected` but this host process has no live verified socket for the profile, and the device grant is not revoked. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for auto-reconnect, so writing down a transport loss (`offline`) never removes that eligibility. The intent itself is the persisted host-side `desiredState` field and is never returned here. Absent = not eligible."
 										}
 									},
 									"required": [
@@ -6737,6 +6737,8 @@ window.__ModuleLoader__.load({
 		}
 		// packages/perse-remote-dev/src/client/native-sessions/integration.ts
 		const LOG$1 = "[perse-remote-dev]";
+		const RECONNECT_FIRST_DELAY_MS = 2e3;
+		const RECONNECT_MAX_DELAY_MS = 3e4;
 		/** Connects the settings controller to DSH's optional native external-session registry. */
 		var PcNativeSessionIntegration = class {
 			sessions;
@@ -6745,7 +6747,14 @@ window.__ModuleLoader__.load({
 			backend;
 			unregister;
 			activeProfileId;
-			attemptedRecovery = /* @__PURE__ */ new Set();
+			/**
+			* The connection this process had verified and installed. Its disappearance is the
+			* transport-loss trigger; an explicit user action is not.
+			*/
+			liveConnection;
+			reconnectTimers = /* @__PURE__ */ new Map();
+			reconnecting = /* @__PURE__ */ new Set();
+			reconnectFailures = /* @__PURE__ */ new Map();
 			disposed = false;
 			stopController;
 			navListeners = /* @__PURE__ */ new Set();
@@ -6826,6 +6835,11 @@ window.__ModuleLoader__.load({
 			dispose() {
 				if (this.disposed) return;
 				this.disposed = true;
+				for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
+				this.reconnectTimers.clear();
+				this.reconnectFailures.clear();
+				this.reconnecting.clear();
+				this.liveConnection = void 0;
 				this.controller.setCreationReceiptAcknowledger(() => void 0);
 				this.stopController();
 				this.unregister?.();
@@ -6837,6 +6851,12 @@ window.__ModuleLoader__.load({
 				this.navBoundBackend = void 0;
 				this.navListeners.clear();
 			}
+			/**
+			* Launch-time restore: every reconnect-eligible profile gets one immediate
+			* reverification from the list already read here. A failure keeps the eligibility
+			* and re-enters the same backoff loop that serves a lost live connection, so a
+			* host that is briefly down is not given up on for the rest of the session.
+			*/
 			async restoreConnectedProfiles() {
 				const profiles = await this.controller.refreshProfiles();
 				if (this.disposed) return;
@@ -6845,16 +6865,104 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				for (const profile of profiles.value) {
-					if (profile.autoConnect !== true || this.attemptedRecovery.has(profile.profileId)) continue;
-					this.attemptedRecovery.add(profile.profileId);
-					const connected = await this.controller.connectProfile(profile.profileId);
-					if (!connected.ok) console.warn(LOG$1, `主机自动重连失败，保留为离线：profile=${profile.profileId} ${connected.failure.code} — ${connected.failure.message}`);
+					if (profile.autoConnect !== true) continue;
+					if (this.reconnecting.has(profile.profileId)) continue;
+					this.reconnecting.add(profile.profileId);
+					try {
+						await this.dispatchReconnect(profile.profileId);
+					} finally {
+						this.reconnecting.delete(profile.profileId);
+					}
 				}
+			}
+			/**
+			* One pending attempt per profile: however many state changes point at the same lost
+			* connection, only one timer is armed. Scheduling is legal while an attempt is still
+			* in flight — the attempt schedules its own successor — so the timer re-arms instead
+			* of being lost if that attempt has not settled by the time it fires.
+			*/
+			scheduleReconnect(profileId, delayMs) {
+				if (this.disposed) return;
+				if (this.reconnectTimers.has(profileId)) return;
+				const timer = setTimeout(() => {
+					this.reconnectTimers.delete(profileId);
+					if (this.reconnecting.has(profileId)) {
+						this.scheduleReconnect(profileId, RECONNECT_FIRST_DELAY_MS);
+						return;
+					}
+					this.attemptReconnect(profileId);
+				}, delayMs);
+				this.reconnectTimers.set(profileId, timer);
+			}
+			/** After `failures` consecutive failures: about 2s, then 4s, 8s, 16s, capped at 30s. */
+			reconnectDelayMs(failures) {
+				return Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_FIRST_DELAY_MS * 2 ** Math.max(0, failures - 1));
+			}
+			stopReconnect(profileId) {
+				const timer = this.reconnectTimers.get(profileId);
+				if (timer !== void 0) clearTimeout(timer);
+				this.reconnectTimers.delete(profileId);
+				this.reconnectFailures.delete(profileId);
+			}
+			/**
+			* A scheduled attempt re-reads the stored intent before dispatching, so a user
+			* disconnect, a forget/revoke or a removed profile ends the loop without ever
+			* reaching the host.
+			*/
+			async attemptReconnect(profileId) {
+				if (this.disposed || this.reconnecting.has(profileId)) return;
+				this.reconnecting.add(profileId);
+				try {
+					const profiles = await this.controller.refreshProfiles();
+					if (this.disposed) return;
+					if (!profiles.ok) {
+						this.scheduleReconnect(profileId, this.reconnectDelayMs(this.reconnectFailures.get(profileId) ?? 1));
+						return;
+					}
+					const profile = profiles.value.find((item) => item.profileId === profileId);
+					if (profile === void 0 || profile.autoConnect !== true) {
+						this.stopReconnect(profileId);
+						return;
+					}
+					const connection = this.controller.getSnapshot().connection;
+					if (connection.status === "connected" && connection.profileId === profileId) {
+						this.stopReconnect(profileId);
+						return;
+					}
+					await this.dispatchReconnect(profileId);
+				} finally {
+					this.reconnecting.delete(profileId);
+				}
+			}
+			/**
+			* Reverify only, under the same rule as the launch-time restore: the bridge takes a
+			* fresh generation and validates the host identity, no Session is recreated and no
+			* prompt or mutation is replayed. A success installs through the single-owner
+			* controller subscription below; installing here as well would retire the exact
+			* generation the acceptance just published.
+			*/
+			async dispatchReconnect(profileId) {
+				const result = await this.controller.connectProfile(profileId);
+				if (this.disposed) return;
+				if (result.ok) {
+					this.reconnectFailures.delete(profileId);
+					console.log(LOG$1, `主机自动重连成功：profile=${profileId} generation=${result.value.generation}`);
+					return;
+				}
+				const failures = (this.reconnectFailures.get(profileId) ?? 0) + 1;
+				this.reconnectFailures.set(profileId, failures);
+				console.warn(LOG$1, `主机自动重连失败，继续退避重试：profile=${profileId} attempt=${failures} ${result.failure.code} — ${result.failure.message}`);
+				this.scheduleReconnect(profileId, this.reconnectDelayMs(failures));
 			}
 			sync(snapshot) {
 				if (this.disposed || this.sessions === void 0) return;
 				const connection = snapshot.connection;
 				if (connection.status === "connected" && connection.profileId !== null && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
+					this.liveConnection = {
+						profileId: connection.profileId,
+						generation: connection.generation
+					};
+					this.stopReconnect(connection.profileId);
 					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
 					if (profile === void 0) return;
 					if (this.backend?.generation === connection.generation && this.backend.backendId === connection.profileId) return;
@@ -6865,6 +6973,14 @@ window.__ModuleLoader__.load({
 						hostInfoJson: JSON.stringify(connection.hostInfo)
 					});
 					return;
+				}
+				const lost = this.liveConnection;
+				if (lost !== void 0 && connection.status === "error" && connection.profileId === lost.profileId) {
+					this.liveConnection = void 0;
+					this.scheduleReconnect(lost.profileId, 0);
+				} else if (lost !== void 0 && connection.status === "disconnected" && (connection.profileId === lost.profileId || connection.profileId === null)) {
+					this.liveConnection = void 0;
+					this.stopReconnect(lost.profileId);
 				}
 				if (this.activeProfileId !== void 0) {
 					if (!snapshot.profiles.some((profile) => profile.profileId === this.activeProfileId)) {

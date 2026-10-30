@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import WebSocket, { type RawData } from 'ws'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { PcProfileStore } from './profile-store.ts'
+import { pcDesiredStateOf } from './profile-store.ts'
 import type { PcStoredProfile } from './profile-store.ts'
 import type {
   PcCallRequest,
@@ -88,10 +89,11 @@ export class PcBridge {
       const active = this.connections.get(profile.profileId)
       const connected = active !== undefined && active.verified && active.socket.readyState === WebSocket.OPEN
       const status = connected ? 'connected' : profile.status === 'revoked' ? 'revoked' : 'offline'
-      // A profile saved while still live must stay reconnectable after a restart,
-      // even though the display status is honestly downgraded to `offline` until
-      // a fresh verified socket exists in this process.
-      const reconnectable = !connected && profile.status === 'connected'
+      // Eligibility is the stored intent, never the observation. Writing down a
+      // transport loss as `offline` therefore keeps a wanted connection eligible;
+      // only an explicit user disconnect, or a revoked grant, ends it. A revoked
+      // grant is never eligible, whatever the intent says.
+      const reconnectable = status !== 'revoked' && !connected && pcDesiredStateOf(profile) === 'connected'
       return { ...this.store.view(profile, status), ...(reconnectable ? { autoConnect: true } : {}) }
     })
   }
@@ -161,6 +163,9 @@ export class PcBridge {
 
   async connect(profileId: string, signal: AbortSignal): Promise<PcConnectValue> {
     const profile = await this.requireProfile(profileId)
+    // Pressing 连接 is intent even if this handshake then fails, so a later transport
+    // loss still finds the connection wanted. Only a user disconnect withdraws it.
+    if (pcDesiredStateOf(profile) !== 'connected') await this.storeIntent(profileId, 'connected')
     try {
       return await this.connectProfile(profile, signal)
     } catch (error) {
@@ -171,12 +176,23 @@ export class PcBridge {
 
   async disconnect(profileId: string): Promise<void> {
     await this.requireProfile(profileId)
+    // The user withdrawing intent is recorded before the socket goes away, so the
+    // transport `close` that follows cannot be mistaken for a reconnectable loss.
+    await this.storeIntent(profileId, 'disconnected')
+    this.closeSocket(profileId)
+  }
+
+  /**
+   * Tear the live socket down without touching the stored intent. A new connect
+   * replaces its own previous socket, and replacing a socket is not the user asking
+   * for less — only an explicit disconnect withdraws the intent.
+   */
+  private closeSocket(profileId: string): void {
     const active = this.connections.get(profileId)
-    if (active !== undefined) {
-      this.connections.delete(profileId)
-      rejectPending(active, new Error('connection disconnected'))
-      active.socket.close(1000, 'client disconnect')
-    }
+    if (active === undefined) return
+    this.connections.delete(profileId)
+    rejectPending(active, new Error('connection disconnected'))
+    active.socket.close(1000, 'client disconnect')
   }
 
   async forget(profileId: string): Promise<void> {
@@ -237,7 +253,9 @@ export class PcBridge {
     for (const [id, active] of this.connections) {
       this.connections.delete(id)
       rejectPending(active, new Error('bridge disposed'))
-      active.socket.close(1000, 'bridge disposed')
+      // Shutdown ends the socket instead of waiting for a close handshake that a dead or
+      // restarting host never answers; a lingering socket would outlive the plugin.
+      active.socket.terminate()
     }
     this.previews.clear()
   }
@@ -248,7 +266,9 @@ export class PcBridge {
   }
 
   private async connectProfile(profile: PcStoredProfile, signal: AbortSignal): Promise<PcConnectValue> {
-    await this.disconnect(profile.profileId)
+    // Replace our own previous socket only. Going through disconnect() here would
+    // record a user withdrawal that the user never asked for.
+    this.closeSocket(profile.profileId)
     validateEndpoint(profile.endpoint, profile.networkMode)
     const socket = new WebSocket(profile.endpoint, {
       headers: { Authorization: `Bearer ${profile.token}` },
@@ -289,7 +309,7 @@ export class PcBridge {
         await this.store.update(profile.profileId, (current) => {
           if (this.connections.get(profile.profileId) !== active || socket.readyState !== WebSocket.OPEN) throw new Error('connection generation became stale')
           if (current.hostId !== profile.hostId || current.token !== profile.token) throw new Error('profile identity changed')
-          return { ...current, status: 'connected', protocolVersion: version, verifiedAt }
+          return { ...current, status: 'connected', desiredState: 'connected', protocolVersion: version, verifiedAt }
         })
       } catch (error) {
         if (error instanceof Error && /generation|identity changed|profile not found/.test(error.message)) throw error
@@ -329,9 +349,31 @@ export class PcBridge {
 
   private async updateStatus(profile: PcStoredProfile, status: PcStoredProfile['status']): Promise<void> {
     try {
+      // Status only: a transport observation never rewrites the stored intent.
       await this.store.update(profile.profileId, (current) => ({ ...current, status }))
     } catch {
       // The original transport failure is authoritative; the profile remains available for explicit inspection.
+    }
+  }
+
+  /**
+   * Persist what the user asked for; only a user action reaches this. A lost socket,
+   * a failed handshake or a host-side error never comes through here, so recording a
+   * loss can never remove reconnect eligibility. A withdrawn intent also records the
+   * honest `disconnected` observation, except over a revoked grant, which is the more
+   * serious fact. A write failure is logged once without any credential: a lost
+   * disconnect intent would otherwise resurrect a connection the user closed.
+   */
+  private async storeIntent(profileId: string, desiredState: 'connected' | 'disconnected'): Promise<void> {
+    try {
+      await this.store.update(profileId, (current) => ({
+        ...current,
+        desiredState,
+        ...(desiredState === 'disconnected' && current.status !== 'revoked' ? { status: 'disconnected' as const } : {}),
+      }))
+    } catch (error) {
+      const name = error instanceof Error && error.name !== '' ? error.name : typeof error
+      console.error(`[perse-remote-dev] pc-profile-intent write failed profile=${profileId} state=${desiredState} class=${name} reason=${safeReason(error)}`)
     }
   }
 }

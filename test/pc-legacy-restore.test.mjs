@@ -169,7 +169,10 @@ test('legacy stored profile auto-reconnects a modelless 1.2 host and lists it as
   t.after(() => { integration.dispose(); controller.dispose() })
 
   await waitUntil(() => gateway.seenMethods.includes('host.info'))
-  await waitUntil(() => integration.getBackends().length === 1)
+  // A host row appears the moment the verified generation registers; its project list
+  // arrives with the first workspace/session read on that same generation. Wait for the
+  // catalog itself, so the assertions below are not racing that first read.
+  await waitUntil(() => (integration.getBackends()[0]?.workspaces.length ?? 0) > 0)
   const [row] = integration.getBackends()
   assert.equal(row.status, 'connected')
   assert.equal(row.hostName, 'lxldeMac-mini.local')

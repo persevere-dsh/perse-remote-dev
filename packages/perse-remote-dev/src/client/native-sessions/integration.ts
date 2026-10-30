@@ -8,6 +8,12 @@ import type { ExternalSessionsRegistry } from './core-types.ts'
 
 const LOG = '[perse-remote-dev]'
 
+// Capped exponential reconnect backoff (docs/pc-contract.md: Connection intent,
+// transport loss, and reconnect). The first retry after an observed loss waits one
+// first-delay, then each consecutive failure doubles it up to the cap.
+const RECONNECT_FIRST_DELAY_MS = 2_000
+const RECONNECT_MAX_DELAY_MS = 30_000
+
 /** Connects the settings controller to DSH's optional native external-session registry. */
 export class PcNativeSessionIntegration {
   private readonly sessions: ExternalSessionsRegistry | undefined
@@ -16,7 +22,14 @@ export class PcNativeSessionIntegration {
   private backend: PcNativeSessionBackend | undefined
   private unregister: (() => void) | undefined
   private activeProfileId: string | undefined
-  private readonly attemptedRecovery = new Set<string>()
+  /**
+   * The connection this process had verified and installed. Its disappearance is the
+   * transport-loss trigger; an explicit user action is not.
+   */
+  private liveConnection: { readonly profileId: string; readonly generation: string } | undefined
+  private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  private readonly reconnecting = new Set<string>()
+  private readonly reconnectFailures = new Map<string, number>()
   private disposed = false
   private readonly stopController: () => void
   private readonly navListeners = new Set<() => void>()
@@ -99,6 +112,11 @@ export class PcNativeSessionIntegration {
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    for (const timer of this.reconnectTimers.values()) clearTimeout(timer)
+    this.reconnectTimers.clear()
+    this.reconnectFailures.clear()
+    this.reconnecting.clear()
+    this.liveConnection = undefined
     this.controller.setCreationReceiptAcknowledger(() => undefined)
     this.stopController()
     this.unregister?.()
@@ -111,6 +129,12 @@ export class PcNativeSessionIntegration {
     this.navListeners.clear()
   }
 
+  /**
+   * Launch-time restore: every reconnect-eligible profile gets one immediate
+   * reverification from the list already read here. A failure keeps the eligibility
+   * and re-enters the same backoff loop that serves a lost live connection, so a
+   * host that is briefly down is not given up on for the rest of the session.
+   */
   private async restoreConnectedProfiles(): Promise<void> {
     const profiles = await this.controller.refreshProfiles()
     if (this.disposed) return
@@ -122,19 +146,105 @@ export class PcNativeSessionIntegration {
     }
     for (const profile of profiles.value) {
       // The bridge honestly reports a not-yet-verified saved profile as `offline`;
-      // only its autoConnect flag says it was live at the last verification.
-      if (profile.autoConnect !== true || this.attemptedRecovery.has(profile.profileId)) continue
-      this.attemptedRecovery.add(profile.profileId)
-      // Reverify a previously live bridge socket and obtain a fresh generation;
-      // never recreate a Session or replay a prompt during restoration.
-      const connected = await this.controller.connectProfile(profile.profileId)
-      if (!connected.ok) {
-        console.warn(LOG, `主机自动重连失败，保留为离线：profile=${profile.profileId} ${connected.failure.code} — ${connected.failure.message}`)
+      // only its autoConnect flag states the stored intent, so writing down an
+      // earlier transport loss never removed this eligibility.
+      if (profile.autoConnect !== true) continue
+      if (this.reconnecting.has(profile.profileId)) continue
+      this.reconnecting.add(profile.profileId)
+      try {
+        await this.dispatchReconnect(profile.profileId)
+      } finally {
+        this.reconnecting.delete(profile.profileId)
       }
-      // connectProfile publishes the accepted connection synchronously. The
-      // controller subscription above is the single installation owner; doing
-      // another install here would retire that exact generation and its bindings.
     }
+  }
+
+  /**
+   * One pending attempt per profile: however many state changes point at the same lost
+   * connection, only one timer is armed. Scheduling is legal while an attempt is still
+   * in flight — the attempt schedules its own successor — so the timer re-arms instead
+   * of being lost if that attempt has not settled by the time it fires.
+   */
+  private scheduleReconnect(profileId: string, delayMs: number): void {
+    if (this.disposed) return
+    if (this.reconnectTimers.has(profileId)) return
+    const timer = setTimeout(() => {
+      this.reconnectTimers.delete(profileId)
+      if (this.reconnecting.has(profileId)) {
+        this.scheduleReconnect(profileId, RECONNECT_FIRST_DELAY_MS)
+        return
+      }
+      void this.attemptReconnect(profileId)
+    }, delayMs)
+    this.reconnectTimers.set(profileId, timer)
+  }
+
+  /** After `failures` consecutive failures: about 2s, then 4s, 8s, 16s, capped at 30s. */
+  private reconnectDelayMs(failures: number): number {
+    return Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_FIRST_DELAY_MS * 2 ** Math.max(0, failures - 1))
+  }
+
+  private stopReconnect(profileId: string): void {
+    const timer = this.reconnectTimers.get(profileId)
+    if (timer !== undefined) clearTimeout(timer)
+    this.reconnectTimers.delete(profileId)
+    this.reconnectFailures.delete(profileId)
+  }
+
+  /**
+   * A scheduled attempt re-reads the stored intent before dispatching, so a user
+   * disconnect, a forget/revoke or a removed profile ends the loop without ever
+   * reaching the host.
+   */
+  private async attemptReconnect(profileId: string): Promise<void> {
+    if (this.disposed || this.reconnecting.has(profileId)) return
+    this.reconnecting.add(profileId)
+    try {
+      const profiles = await this.controller.refreshProfiles()
+      if (this.disposed) return
+      if (!profiles.ok) {
+        // The unreadable store already logged itself once; keep the loop alive at the
+        // current delay rather than silently ending a connection the user wants back.
+        this.scheduleReconnect(profileId, this.reconnectDelayMs(this.reconnectFailures.get(profileId) ?? 1))
+        return
+      }
+      const profile = profiles.value.find(item => item.profileId === profileId)
+      if (profile === undefined || profile.autoConnect !== true) {
+        this.stopReconnect(profileId)
+        return
+      }
+      const connection = this.controller.getSnapshot().connection
+      if (connection.status === 'connected' && connection.profileId === profileId) {
+        this.stopReconnect(profileId)
+        return
+      }
+      await this.dispatchReconnect(profileId)
+    } finally {
+      this.reconnecting.delete(profileId)
+    }
+  }
+
+  /**
+   * Reverify only, under the same rule as the launch-time restore: the bridge takes a
+   * fresh generation and validates the host identity, no Session is recreated and no
+   * prompt or mutation is replayed. A success installs through the single-owner
+   * controller subscription below; installing here as well would retire the exact
+   * generation the acceptance just published.
+   */
+  private async dispatchReconnect(profileId: string): Promise<void> {
+    const result = await this.controller.connectProfile(profileId)
+    if (this.disposed) return
+    if (result.ok) {
+      this.reconnectFailures.delete(profileId)
+      console.log(LOG, `主机自动重连成功：profile=${profileId} generation=${result.value.generation}`)
+      return
+    }
+    const failures = (this.reconnectFailures.get(profileId) ?? 0) + 1
+    this.reconnectFailures.set(profileId, failures)
+    // One line per failed attempt: the profile and the failure the bridge reported,
+    // which is already credential-free. Credentials are never logged.
+    console.warn(LOG, `主机自动重连失败，继续退避重试：profile=${profileId} attempt=${failures} ${result.failure.code} — ${result.failure.message}`)
+    this.scheduleReconnect(profileId, this.reconnectDelayMs(failures))
   }
 
   private sync(snapshot: PcConnectionSnapshot): void {
@@ -142,6 +252,10 @@ export class PcNativeSessionIntegration {
     const connection = snapshot.connection
     if (connection.status === 'connected' && connection.profileId !== null
       && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
+      // A verified link exists in this process. It is the fact a later loss is
+      // measured against, and any backoff for this profile is over.
+      this.liveConnection = { profileId: connection.profileId, generation: connection.generation }
+      this.stopReconnect(connection.profileId)
       const profile = snapshot.profiles.find(item => item.profileId === connection.profileId)
       if (profile === undefined) return
       if (this.backend?.generation === connection.generation && this.backend.backendId === connection.profileId) return
@@ -152,6 +266,19 @@ export class PcNativeSessionIntegration {
         hostInfoJson: JSON.stringify(connection.hostInfo),
       })
       return
+    }
+    const lost = this.liveConnection
+    if (lost !== undefined && connection.status === 'error' && connection.profileId === lost.profileId) {
+      // The verified link disappeared while the user still wanted it: the stored
+      // intent is untouched, so the same reverification path serves it, starting now.
+      this.liveConnection = undefined
+      this.scheduleReconnect(lost.profileId, 0)
+    } else if (lost !== undefined && connection.status === 'disconnected'
+      && (connection.profileId === lost.profileId || connection.profileId === null)) {
+      // An explicit user action — 断开, 移除 or 撤销 — not a transport event. The
+      // bridge already stored the withdrawn intent; the loop ends without a dispatch.
+      this.liveConnection = undefined
+      this.stopReconnect(lost.profileId)
     }
     if (this.activeProfileId !== undefined) {
       const stillExists = snapshot.profiles.some(profile => profile.profileId === this.activeProfileId)

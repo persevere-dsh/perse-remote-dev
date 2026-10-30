@@ -17,11 +17,28 @@ const profileSchema = z.object({
   deviceName: z.string().min(1).max(100),
   token: z.string().min(32).max(4096),
   status: z.enum(['disconnected', 'connected', 'offline', 'revoked']),
+  /**
+   * Persisted connection intent (docs/pc-contract.md: Connection intent, transport
+   * loss, and reconnect). Optional on disk: a file written before this field
+   * existed derives its intent from the stored status at read time.
+   */
+  desiredState: z.enum(['connected', 'disconnected']).optional(),
   protocolVersion: z.string().max(32).optional(),
   verifiedAt: z.string().datetime().optional(),
 }).strict()
 
 export type PcStoredProfile = z.infer<typeof profileSchema>
+
+/**
+ * The stored intent of a profile. A legacy document has no `desiredState`, so its
+ * intent is read from the stored status: a profile recorded as live was wanted
+ * connected, and one recorded as `offline` or `disconnected` was left offline by
+ * its user and must not start reconnecting. Read-time derivation only — loading
+ * never rewrites the store; the derived value lands with the next write.
+ */
+export function pcDesiredStateOf(profile: PcStoredProfile): 'connected' | 'disconnected' {
+  return profile.desiredState ?? (profile.status === 'connected' ? 'connected' : 'disconnected')
+}
 
 const documentSchema = z.object({ version: z.literal(1), profiles: z.array(profileSchema).max(1000) }).strict()
 const PROFILE_FILE_MAX_BYTES = 8 * 1024 * 1024
@@ -75,8 +92,12 @@ export class PcProfileStore {
     })
   }
 
+  /**
+   * The browser-facing view. It carries neither the token nor the stored intent:
+   * intent reaches the UI only as the derived `autoConnect` eligibility marker.
+   */
   view(profile: PcStoredProfile, status: PcProfileView['status']): PcProfileView {
-    const { token: _secret, protocolVersion, verifiedAt, ...safe } = profile
+    const { token: _secret, desiredState: _intent, protocolVersion, verifiedAt, ...safe } = profile
     return {
       ...safe,
       status,
