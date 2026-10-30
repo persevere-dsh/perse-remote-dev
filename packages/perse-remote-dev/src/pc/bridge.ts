@@ -1,4 +1,4 @@
-/** Owner-side bridge from local DSH Remote calls to the authenticated Perse 1.2 gateway. */
+/** Owner-side bridge from local DSH Remote calls to the authenticated Perse gateway (1.2 base, 1.3 model methods). */
 
 import { randomBytes, randomUUID } from 'node:crypto'
 import WebSocket, { type RawData } from 'ws'
@@ -23,6 +23,8 @@ const PAIR_HANDLE_TTL_MS = 5 * 60_000
 const ALLOWED_METHODS = new Set([
   'host.info', 'workspace.list', 'session.list', 'session.create', 'session.read',
   'session.prompt', 'session.attachment', 'session.interrupt', 'session.rename', 'session.archive', 'session.fork',
+  // v1.3 (specs/005): read-only host model catalog and explicit host-side selection.
+  'model.list', 'session.setModel',
   'approval.respond', 'file.list', 'file.read', 'file.write', 'git.status', 'git.diff', 'git.stage', 'git.unstage',
   'git.commit', 'git.branches', 'terminal.start', 'terminal.read', 'terminal.stop', 'tools.list', 'skills.list',
   'connection.info', 'device.revokeSelf', 'worktree.list', 'worktree.create', 'worktree.remove',
@@ -187,7 +189,7 @@ export class PcBridge {
 
   async call(request: PcCallRequest, signal: AbortSignal): Promise<string> {
     if (typeof request.method !== 'string' || !ALLOWED_METHODS.has(request.method)) {
-      throw remoteError('remote-dev/pc-method-unsupported', '该方法不属于 Perse Remote 1.2 开发接口', { method: request.method })
+      throw remoteError('remote-dev/pc-method-unsupported', '该方法不属于 Perse Remote 开发接口', { method: request.method })
     }
     let params: unknown
     try {

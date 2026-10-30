@@ -25,7 +25,7 @@
     "verify:client": "node scripts/verify-client-bundle.mjs",
     "verify:surface": "node scripts/verify-host-surface.mjs",
     "verify:pack-consumer": "node scripts/verify-packed-consumer.mjs",
-    "test:pc-ui": "vitest run test/pc-ui.native.test.tsx"
+    "test:pc-ui": "vitest run test/pc-ui.native.test.tsx test/pc-ui.remote-nav.test.tsx test/pc-ui.remote-badge.test.tsx test/pc-ui.model-seat.test.tsx"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
@@ -34,6 +34,7 @@
     "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-store": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",

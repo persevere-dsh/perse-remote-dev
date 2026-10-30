@@ -1,5 +1,6 @@
 import type { PcConnectValue } from 'perse-remote-dev/types'
 import type { PcConnectionController, PcConnectionSnapshot, PcProfile, PcRemote } from '../connections/types.ts'
+import type { RemoteNavBackend } from '../remote-nav/model.ts'
 import { PcNativeSessionBackend } from './backend.ts'
 import { pcSubmissionReceipts } from './submission-receipts.ts'
 import { hasExternalSessionsApi } from './registry-compat.ts'
@@ -16,6 +17,70 @@ export class PcNativeSessionIntegration {
   private readonly attemptedRecovery = new Set<string>()
   private disposed = false
   private readonly stopController: () => void
+  private readonly navListeners = new Set<() => void>()
+  private navCatalogStop: (() => void) | undefined
+  private navBoundBackend: PcNativeSessionBackend | undefined
+  private navCatalogError: string | undefined
+
+  /** Host rows for the plugin's own remote navigation group. */
+  getBackends(): readonly RemoteNavBackend[] {
+    const backend = this.backend
+    if (backend === undefined) return []
+    const catalog = backend.catalog.getSnapshot()
+    return [{
+      backendId: backend.backendId,
+      hostId: backend.hostId,
+      hostName: backend.hostName,
+      profileName: backend.profileName,
+      status: catalog.status === 'connected' ? 'connected' : 'offline',
+      warning: catalog.warning,
+      catalogError: this.navCatalogError,
+      workspaces: catalog.workspaces,
+    }]
+  }
+
+  /**
+   * Resolve the remote model seat host (specs/005) for a client Session id: defined only
+   * for Sessions owned by the current backend generation; local Sessions get undefined.
+   */
+  seatHostFor(clientSessionId: string): { readonly backend: PcNativeSessionBackend; readonly remoteSessionId: string } | undefined {
+    const backend = this.backend
+    if (backend === undefined) return undefined
+    const registry = this.sessions as unknown as {
+      externalIdentityOf?: (id: string) => { backendId: string; generation: string; address: { sessionId: string } } | undefined
+    } | undefined
+    if (typeof registry?.externalIdentityOf !== 'function') return undefined
+    let identity: { backendId: string; generation: string; address: { sessionId: string } } | undefined
+    try { identity = registry.externalIdentityOf(clientSessionId) } catch { return undefined }
+    if (identity === undefined) return undefined
+    if (String(identity.backendId) !== String(backend.backendId) || String(identity.generation) !== String(backend.generation)) return undefined
+    return { backend, remoteSessionId: String(identity.address.sessionId) }
+  }
+
+  /** Subscribe to backend install/retire and catalog changes; the group renders from this alone. */
+  subscribeBackends(listener: () => void): () => void {
+    this.navListeners.add(listener)
+    this.bindNavCatalog()
+    return () => {
+      this.navListeners.delete(listener)
+      this.bindNavCatalog()
+    }
+  }
+
+  private readonly notifyNav = (): void => {
+    for (const listener of [...this.navListeners]) listener()
+  }
+
+  private bindNavCatalog(): void {
+    const target = this.disposed || this.navListeners.size === 0 ? undefined : this.backend
+    if (target === this.navBoundBackend) return
+    this.navCatalogStop?.()
+    this.navCatalogStop = undefined
+    this.navBoundBackend = undefined
+    if (target === undefined) return
+    this.navCatalogStop = target.catalog.subscribe(this.notifyNav)
+    this.navBoundBackend = target
+  }
 
   constructor(options: { sessions: ExternalSessionsRegistry | undefined; controller: PcConnectionController; remote: PcRemote }) {
     const supported = hasExternalSessionsApi(options.sessions)
@@ -38,6 +103,10 @@ export class PcNativeSessionIntegration {
     this.unregister = undefined
     this.backend?.dispose()
     this.backend = undefined
+    this.navCatalogStop?.()
+    this.navCatalogStop = undefined
+    this.navBoundBackend = undefined
+    this.navListeners.clear()
   }
 
   private async restoreConnectedProfiles(): Promise<void> {
@@ -80,6 +149,8 @@ export class PcNativeSessionIntegration {
         this.backend?.dispose()
         this.backend = undefined
         this.activeProfileId = undefined
+        this.bindNavCatalog()
+        this.notifyNav()
       } else {
         this.backend?.setOffline()
       }
@@ -113,8 +184,19 @@ export class PcNativeSessionIntegration {
     })
     this.backend = backend
     this.activeProfileId = connection.profileId
+    this.navCatalogError = undefined
     this.unregister = this.sessions.registerExternalBackend(backend)
-    void backend.refresh().catch(() => undefined)
+    this.bindNavCatalog()
+    this.notifyNav()
+    void backend.refresh().then(() => {
+      if (this.disposed || this.backend !== backend || this.navCatalogError === undefined) return
+      this.navCatalogError = undefined
+      this.notifyNav()
+    }, (error: unknown) => {
+      if (this.disposed || this.backend !== backend) return
+      this.navCatalogError = error instanceof Error ? error.message : 'catalog refresh failed'
+      this.notifyNav()
+    })
   }
 
   private refreshPendingCreationWarning(): void {

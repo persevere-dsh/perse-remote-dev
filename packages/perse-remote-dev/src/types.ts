@@ -157,10 +157,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     }
     /** Legacy URL-opening routes have been retired in favor of paired Perse 1.2 profiles. */
     'remote-dev/pc-legacy-retired': { readonly method: string }
-    /** A native DSH session operation cannot be represented by Perse 1.2. */
+    /** A native DSH session operation is not advertised by the verified host (specs/005 adds the requested model). */
     'remote-dev/pc-native-capability-unavailable': {
       readonly method: string
       readonly capability: string
+      /** Model route the request named, when the refusal concerns a specific model. */
+      readonly model?: string
     }
     /** Remote native history is no longer retained at the requested cursor. */
     'remote-dev/pc-native-history-expired': {
