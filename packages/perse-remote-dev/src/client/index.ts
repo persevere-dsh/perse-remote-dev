@@ -64,6 +64,22 @@ function applyPcUi(ctx: Context): void {
   const nav = createRemoteNavModel({
     getBackends: () => nativeSessions.getBackends(),
     subscribeBackends: listener => nativeSessions.subscribeBackends(listener),
+    // Row inventory: every stored profile renders, from the bridge-reported
+    // profile list (status observation + autoConnect intent marker only — the
+    // durable desiredState stays host-side).
+    getProfiles: () => controller.getSnapshot().profiles,
+    subscribeProfiles: listener => controller.subscribe(listener),
+    // The one host whose installed generation serves native sessions; a
+    // connected-but-not-active host still renders its true status, without a tree.
+    getActiveProfileId: () => nativeSessions.getActiveProfileId(),
+    // One explicit user-requested attempt per call, for exactly this profile:
+    // the same controller path the automatic loop uses (reverify-only,
+    // no Session recreated, no prompt replayed). No timer is ever armed here.
+    connectProfile: profileId => {
+      void controller.connectProfile(profileId).then(outcome => {
+        if (!outcome.ok) console.warn(LOG, 'remote host connect failed:', outcome.failure.code, outcome.failure.message)
+      }, (error: unknown) => { console.warn(LOG, 'remote host connect failed:', error) })
+    },
     navigation,
     onActionError: (error: unknown) => { console.warn(LOG, 'remote session action failed:', error) },
   })
@@ -79,17 +95,26 @@ function applyPcUi(ctx: Context): void {
     PcConnectionSettings,
   ))
 
-  // Remote host → project → session navigation sits in the sidebar foot list, an
-  // official stackable `list` seat, and is placed by its own `order`. The plugin
-  // deliberately does not take `sidebar.workspaces`: that hole is `single`, is
-  // occupied by ui-workspace's own browser, and shadowing it would replace the
-  // local workspace tree. Connection management is reachable from this group's
-  // header action (and the collapsed rail), not from a first-level panel row.
-  ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
+  // Stored-host navigation contributes to the core's generic
+  // `sidebar.workspaces.secondary` list hole: its own bordered section inside
+  // the workspace region, below the local Workspace/Session tree, rendered
+  // wide-only. This replaces the old `sidebar.footer.action` seat — below the
+  // account row, which the owner rejected (「远程主机位置太靠下了，要和工作区
+  // 一起，只是分开区分而已」). The hole's owner passes no props, so all data
+  // rides on this contribution's own inject face; nothing remote-specific
+  // enters core types. Ordering: ascending explicit `order` — 50 places the
+  // group above any future section that keeps the default; equal `order`
+  // keeps registration order, the core's documented tie rule. The group
+  // still does not take `sidebar.workspaces` itself: that hole is `single`,
+  // occupied by ui-workspace's own browser, and shadowing it would replace
+  // the local workspace tree, which N07 forbids. Connection management
+  // stays reachable from inside the group's header (and from the settings
+  // section); it has no first-level panel row.
+  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.secondary', () => ctx.slots.register(
     {
-      name: 'sidebar.footer.action',
+      name: 'sidebar.workspaces.secondary',
       id: 'perse-remote-dev-remote-hosts',
-      order: 100,
+      order: 50,
       locale: REMOTE_NAV_LOCALE,
       inject: () => ({ nav, openConnections, hooks: { nav } }),
     },

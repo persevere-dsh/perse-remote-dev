@@ -6778,6 +6778,17 @@ window.__ModuleLoader__.load({
 				}];
 			}
 			/**
+			* The stored profile whose installed generation currently owns native
+			* sessions, if any. Exactly one backend is installed at a time — `install()`
+			* unregisters the previous one — so at most one host is active for
+			* sessions, even though `bridge.ts` can hold verified sockets for several
+			* profiles concurrently (its `connections` map is keyed by profileId and a
+			* connect only replaces that profile's own previous socket).
+			*/
+			getActiveProfileId() {
+				return this.backend === void 0 ? void 0 : this.activeProfileId;
+			}
+			/**
 			* Resolve the remote model seat host (specs/005) for a client Session id: defined only
 			* for Sessions owned by the current backend generation; local Sessions get undefined.
 			*/
@@ -7079,28 +7090,60 @@ window.__ModuleLoader__.load({
 			return service;
 		}
 		const EMPTY = {
-			backends: [],
+			hosts: [],
 			selectedAddress: void 0,
 			nativeSessionsAvailable: false
 		};
 		/** Compare two Host-qualified addresses by value, so an equal re-read is not a re-render. */
 		const sameAddress = (left, right) => left === right || left !== void 0 && right !== void 0 && left.backendId === right.backendId && left.hostId === right.hostId && left.workspaceId === right.workspaceId && left.sessionId === right.sessionId;
+		/**
+		* The decision table from docs/pc-contract.md, in code. The observation is
+		* primary; the intent marker only splits a not-connected observation into
+		* transport loss (reconnectable) versus withdrawn intent. `autoConnect` is the
+		* single allowed intent signal — nothing here reads or reconstructs
+		* `desiredState`, so the view cannot invent intent.
+		*/
+		function remoteHostRowState(profile) {
+			if (profile.status === "connected") return "connected";
+			if (profile.status === "revoked") return "revoked";
+			return profile.autoConnect === true ? "reconnect" : "not-connected";
+		}
 		/** Merge the plugin catalog and the native selection into one stable snapshot. */
 		function createRemoteNavModel(sources) {
 			let snapshot = EMPTY;
 			const listeners = /* @__PURE__ */ new Set();
 			let disposed = false;
+			const buildHosts = () => {
+				const backends = sources.getBackends();
+				const activeProfileId = sources.getActiveProfileId();
+				return sources.getProfiles().map((profile) => {
+					const backend = backends.find((candidate) => String(candidate.backendId) === profile.profileId);
+					return {
+						profileId: profile.profileId,
+						hostName: profile.hostName,
+						deviceName: profile.deviceName,
+						rowState: remoteHostRowState(profile),
+						active: activeProfileId !== void 0 && activeProfileId === profile.profileId,
+						backend
+					};
+				});
+			};
+			const sameHosts = (left, right) => left.length === right.length && left.every((host, index) => {
+				const other = right[index];
+				return other !== void 0 && host.profileId === other.profileId && host.hostName === other.hostName && host.deviceName === other.deviceName && host.rowState === other.rowState && host.active === other.active && host.backend === other.backend;
+			});
 			const publish = () => {
 				if (disposed) return;
 				const navigation = sources.navigation;
+				const hosts = buildHosts();
 				const next = {
-					backends: sources.getBackends(),
+					hosts: sameHosts(snapshot.hosts, hosts) ? snapshot.hosts : hosts,
 					selectedAddress: navigation?.selection.getSnapshot().externalAddress,
 					nativeSessionsAvailable: navigation !== void 0
 				};
 				const previous = snapshot;
 				const sameSelection = sameAddress(previous.selectedAddress, next.selectedAddress);
-				if (previous.backends === next.backends && sameSelection && previous.nativeSessionsAvailable === next.nativeSessionsAvailable) return;
+				if (previous.hosts === next.hosts && sameSelection && previous.nativeSessionsAvailable === next.nativeSessionsAvailable) return;
 				snapshot = {
 					...next,
 					selectedAddress: sameSelection ? previous.selectedAddress : next.selectedAddress
@@ -7108,6 +7151,7 @@ window.__ModuleLoader__.load({
 				for (const listener of [...listeners]) listener();
 			};
 			const stopBackends = sources.subscribeBackends(publish);
+			const stopProfiles = sources.subscribeProfiles(publish);
 			const navigation = sources.navigation;
 			const stopSelection = navigation === void 0 ? void 0 : navigation.selection.subscribe(publish);
 			publish();
@@ -7136,10 +7180,14 @@ window.__ModuleLoader__.load({
 				createSession: (address) => {
 					guard(() => navigation?.createExternalSession(address));
 				},
+				connectHost: (profileId) => {
+					sources.connectProfile(profileId);
+				},
 				dispose: () => {
 					if (disposed) return;
 					disposed = true;
 					stopBackends();
+					stopProfiles();
 					stopSelection?.();
 					listeners.clear();
 				}
@@ -7155,19 +7203,31 @@ window.__ModuleLoader__.load({
 			}
 		}
 		// packages/perse-remote-dev/src/client/remote-nav/styles.ts
-		/** Theme-token styles for the plugin-owned remote host/project/session group. */
+		/** Theme-token styles for the plugin-owned remote host/project/session group.
+		*
+		* Height contract: `.pcRemoteRoot` is the bounded root — `max-height: 42vh`
+		* with `.pcRemoteList` as its own scroll area — because the core's
+		* `sidebar.workspaces.secondary` wrapper is `flex: none` under the local
+		* tree and guarantees nothing about contribution height. An uncapped group
+		* would squeeze the tree; 42vh keeps at least ~58% of the sidebar with the
+		* tree and scrolls the host list instead of growing.
+		*/
 		const REMOTE_NAV_CSS = [
 			".pcRemoteRoot{box-sizing:border-box;display:flex;min-width:0;flex:0 1 auto;flex-direction:column;max-height:42vh;overflow:hidden;color:var(--dsw-alias-label-primary);font:12px/1.45 system-ui,-apple-system,sans-serif}",
 			".pcRemoteChevron{flex:0 0 auto;transition:transform .12s ease}.pcRemoteChevronOpen{flex:0 0 auto;transform:rotate(90deg);transition:transform .12s ease}",
 			".pcRemoteHeader,.pcRemoteHostButton,.pcRemoteWorkspaceButton,.pcRemoteSession,.pcRemoteSessionSelected{box-sizing:border-box;min-width:0;width:100%;display:flex;align-items:center;border:0;background:transparent;text-align:left}",
 			".pcRemoteHeader{gap:4px;height:26px;padding:0 4px 0 2px}",
 			".pcRemoteTitle{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/20px inherit;text-align:left;cursor:pointer}",
-			".pcRemoteManage,.pcRemoteNew{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;border:0;border-radius:var(--dsw-radius-sm,6px);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;padding:2px 5px;font:inherit}",
+			".pcRemoteManage,.pcRemoteNew,.pcRemoteAction{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;border:0;border-radius:var(--dsw-radius-sm,6px);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;padding:2px 5px;font:inherit}",
 			".pcRemoteManage{font-size:11px}.pcRemoteNew{height:22px;width:22px;padding:0}",
-			".pcRemoteTitle:hover,.pcRemoteManage:hover,.pcRemoteNew:hover,.pcRemoteHostButton:hover,.pcRemoteWorkspaceButton:hover,.pcRemoteSession:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			".pcRemoteAction{color:var(--dsw-alias-label-secondary);font-size:11px;line-height:16px;padding:2px 6px}",
+			".pcRemoteTitle:hover,.pcRemoteManage:hover,.pcRemoteNew:hover,.pcRemoteAction:hover,.pcRemoteHostButton:hover,.pcRemoteWorkspaceButton:hover,.pcRemoteSession:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			".pcRemoteHostRow{display:flex;align-items:center;gap:2px;min-width:0}",
+			".pcRemoteHostRow>.pcRemoteHostButton{flex:1 1 auto;width:auto}",
 			".pcRemoteHostButton{height:28px;gap:5px;padding:0 4px;border-radius:var(--dsw-radius-sm,6px);color:var(--dsw-alias-label-secondary);cursor:pointer}",
 			".pcRemoteHostName{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-			".pcRemoteStatus{flex:0 0 auto;color:var(--dsw-alias-label-tertiary);font-size:11px}.pcRemoteStatus[data-state=connected]{color:var(--dsw-alias-state-success-primary)}",
+			".pcRemoteStatus{flex:0 0 auto;color:var(--dsw-alias-label-tertiary);font-size:11px}",
+			".pcRemoteDot{flex:0 0 auto;width:8px;height:8px;margin:0 4px;border-radius:50%;background:var(--dsw-alias-state-success-primary)}",
 			".pcRemoteList{display:flex;min-height:0;flex-direction:column;overflow-y:auto;padding-left:10px}",
 			".pcRemoteWorkspaceButton{gap:5px;min-height:26px;padding:0 4px;border-radius:var(--dsw-radius-sm,6px);color:var(--dsw-alias-label-secondary);cursor:pointer}",
 			".pcRemoteWorkspaceRow{display:flex;align-items:center;gap:2px;min-width:0}",
@@ -7182,14 +7242,35 @@ window.__ModuleLoader__.load({
 			".pcRemoteRoot :focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}"
 		].join("");
 		// packages/perse-remote-dev/src/client/remote-nav/index.ts
-		/** Plugin-owned remote navigation: the host → project → session group and the Session header badge.
+		/** Plugin-owned remote navigation: the stored-host group and the Session header badge.
 		*
-		* Both surfaces sit in official stackable slots declared by the baseline shell:
-		* `sidebar.footer.action` (a `list` seat in the left column, ordered by `options.order`)
-		* and `conversation.session.header.utilities` (a `list` seat in the Session header).
-		* `sidebar.workspaces` is NOT usable here: it is a `single` hole occupied by
-		* ui-workspace's own browser, and a same-priority registration throws — taking that
-		* seat would replace the local workspace tree, which N07 forbids.
+		* The host group contributes to `sidebar.workspaces.secondary` — the core's
+		* generic `list` hole whose entries render as their own bordered sections
+		* inside the workspace region, below the local Workspace/Session tree
+		* (wide-only; ascending explicit `order`, ties keep registration order;
+		* the owner passes no props and interprets nothing). The group used to sit
+		* at `sidebar.footer.action`, below the account row — the owner rejected
+		* that: the stored machines belong with the workspaces, just in a section
+		* of their own.
+		* `sidebar.workspaces` itself is still NOT usable: it is a `single` hole
+		* occupied by ui-workspace's own browser, and a same-priority registration
+		* throws — taking that seat would replace the local workspace tree, which
+		* N07 forbids. The secondary hole exists precisely so a contribution can
+		* stand beside the tree without touching it.
+		*
+		* Height: the core guarantees nothing about a contribution's height, and a
+		* tall section would squeeze the flex tree above it. The group therefore
+		* caps itself — `max-height: 42vh` on its root with its own scrolling list
+		* — so at least the remaining ~58% of the sidebar stays with the local
+		* tree regardless of how many hosts are stored (the profile store allows
+		* 1000, and the list scrolls instead of growing).
+		*
+		* Rows: one row per stored profile — never only the active host. The state
+		* shown is derived from the observed status plus the `autoConnect` intent
+		* marker only (docs/pc-contract.md: Sidebar host row display states).
+		*
+		* The badge sits in `conversation.session.header.utilities`, a `list` seat
+		* in the Session header.
 		*/
 		const REMOTE_NAV_LOCALE = "perse.remote.navigation";
 		const remoteNavLocale = {
@@ -7199,6 +7280,10 @@ window.__ModuleLoader__.load({
 				connectionsAria: "打开远程主机连接设置",
 				"status.connected": "在线",
 				"status.offline": "离线",
+				"status.notConnected": "未连接",
+				"status.revoked": "已撤销",
+				"action.reconnect": "重连",
+				"action.connect": "连接",
 				"status.running": "运行中",
 				"sessions.count": "{n} 个会话",
 				"session.untitled": "未命名会话",
@@ -7207,7 +7292,7 @@ window.__ModuleLoader__.load({
 				"session.empty": "暂无会话",
 				"workspace.empty": "暂无工作区",
 				catalogError: "目录同步失败：{error}",
-				empty: "还没有已连接的远程主机。",
+				empty: "还没有已配对的远程主机。",
 				upgrade: "当前 DSH 核心缺少原生远程会话接口；连接配置仍可使用。",
 				"header.remote": "远程 · {host} / {workspace}",
 				"header.remoteHint": "使用远程主机的模型；当前连接暂不支持切换模型、上传文件或插入本机命令。",
@@ -7219,6 +7304,10 @@ window.__ModuleLoader__.load({
 				connectionsAria: "Open remote host connection settings",
 				"status.connected": "Online",
 				"status.offline": "Offline",
+				"status.notConnected": "Not connected",
+				"status.revoked": "Revoked",
+				"action.reconnect": "Reconnect",
+				"action.connect": "Connect",
 				"status.running": "Running",
 				"sessions.count": "{n} sessions",
 				"session.untitled": "Untitled session",
@@ -7227,7 +7316,7 @@ window.__ModuleLoader__.load({
 				"session.empty": "No sessions",
 				"workspace.empty": "No workspaces",
 				catalogError: "Catalog refresh failed: {error}",
-				empty: "No connected remote hosts yet.",
+				empty: "No paired remote hosts yet.",
 				upgrade: "This DSH core has no native remote-session interface; connection settings remain available.",
 				"header.remote": "Remote · {host} / {workspace}",
 				"header.remoteHint": "Using the remote host model. This connection does not support changing models, uploading files, or inserting local commands.",
@@ -7254,22 +7343,23 @@ window.__ModuleLoader__.load({
 			height: 13,
 			rx: 2
 		}), h("path", { d: "M8 21h8M12 18v3" }));
-		/** Host → authorized project → session group, collapsed at the session level by default. */
+		/** Visible label for each row state; 「在线」 renders as the green dot instead of text. */
+		const rowStatusLabel = (t, state) => {
+			if (state === "connected") return t("status.connected");
+			if (state === "reconnect") return t("status.offline");
+			if (state === "revoked") return t("status.revoked");
+			return t("status.notConnected");
+		};
+		/** Stored-host group: every stored profile is a row; sessions render only under the
+		* one host whose generation is active for native sessions. */
 		function RemoteWorkspaceSection(props) {
-			const { nav, openConnections, t, wide } = props;
+			const { nav, openConnections, t } = props;
 			const snapshot = props.useNav((value) => value);
 			const [open, setOpen] = react.useState(true);
 			const [closedHosts, setClosedHosts] = react.useState({});
 			const [openProjects, setOpenProjects] = react.useState({});
-			if (!wide) return h("button", {
-				type: "button",
-				className: "pcRemoteManage",
-				"aria-label": t("connectionsAria"),
-				title: t("connections"),
-				onClick: openConnections
-			}, h(ManageIcon, null));
-			const renderSessions = (backend, workspace) => {
-				const key = `${backend.backendId}/${backend.hostId}/${workspace.id}`;
+			const renderSessions = (hostKey, backend, workspace) => {
+				const key = `${hostKey}/${workspace.id}`;
 				if (openProjects[key] !== true) return null;
 				if (workspace.sessions.length === 0) return h("p", { className: "pcRemoteNote" }, t("session.empty"));
 				const offline = backend.status !== "connected";
@@ -7296,60 +7386,57 @@ window.__ModuleLoader__.load({
 					}, h("span", { className: "pcRemoteSessionTitle" }, title), session.running ? h("span", { className: "pcRemoteRunning" }, t("status.running")) : null);
 				}));
 			};
-			return h("section", {
-				className: "pcRemoteRoot",
-				"aria-label": t("section"),
-				"data-remote-workspace-tree": "1"
-			}, h("style", { "data-perse-remote-nav-styles": "1" }, REMOTE_NAV_CSS), h("div", { className: "pcRemoteHeader" }, h("button", {
-				type: "button",
-				className: "pcRemoteTitle",
-				"aria-expanded": open,
-				"aria-label": t("section"),
-				onClick: () => {
-					setOpen((value) => !value);
-				}
-			}, h(Chevron, { open }), h("span", null, t("section"))), h("button", {
-				type: "button",
-				className: "pcRemoteManage",
-				"aria-label": t("connectionsAria"),
-				title: t("connections"),
-				onClick: openConnections
-			}, h(ManageIcon, null), h("span", null, t("connections")))), open ? h("div", { className: "pcRemoteList" }, snapshot.nativeSessionsAvailable ? null : h("p", {
-				className: "pcRemoteNote",
-				"data-tone": "warn",
-				role: "note"
-			}, t("upgrade")), snapshot.backends.length === 0 ? h("p", { className: "pcRemoteNote" }, t("empty")) : null, ...snapshot.backends.map((backend) => {
-				const hostKey = `${backend.backendId}/${backend.hostId}`;
-				const hostOpen = closedHosts[hostKey] !== true;
-				const offline = backend.status !== "connected";
-				const hostLabel = `${backend.hostName} · ${backend.profileName}`;
+			const renderHost = (host) => {
+				const hostKey = host.profileId;
+				const backend = host.backend;
+				const hasTree = backend !== void 0;
+				const hostOpen = hasTree && closedHosts[hostKey] !== true;
+				const statusText = rowStatusLabel(t, host.rowState);
 				return h("div", {
 					className: "pcRemoteHost",
 					key: hostKey,
-					"data-remote-backend": hostKey
-				}, h("button", {
+					"data-remote-host": hostKey
+				}, h("div", { className: "pcRemoteHostRow" }, h("button", {
 					type: "button",
 					className: "pcRemoteHostButton",
-					"aria-label": `${hostLabel} · ${offline ? t("status.offline") : t("status.connected")}`,
-					"aria-expanded": hostOpen,
+					"aria-label": `${host.hostName} · ${host.deviceName} · ${statusText}`,
+					"aria-expanded": hasTree ? hostOpen : void 0,
 					onClick: () => {
 						setClosedHosts((value) => ({
 							...value,
 							[hostKey]: value[hostKey] === true ? false : true
 						}));
 					}
-				}, h(Chevron, { open: hostOpen }), h("span", { className: "pcRemoteHostName" }, hostLabel), h("span", {
+				}, hasTree ? h(Chevron, { open: hostOpen }) : null, h("span", { className: "pcRemoteHostName" }, `${host.hostName} · ${host.deviceName}`), host.rowState === "connected" ? h("span", {
+					className: "pcRemoteDot",
+					"data-state": "connected",
+					"aria-hidden": true
+				}) : h("span", {
 					className: "pcRemoteStatus",
-					"data-state": offline ? "offline" : "connected"
-				}, offline ? t("status.offline") : t("status.connected"))), backend.warning === void 0 || backend.warning === "" ? null : h("p", {
+					"data-state": "offline"
+				}, statusText)), host.rowState === "reconnect" ? h("button", {
+					type: "button",
+					className: "pcRemoteAction",
+					"aria-label": t("action.reconnect"),
+					onClick: () => {
+						nav.connectHost(host.profileId);
+					}
+				}, t("action.reconnect")) : null, host.rowState === "not-connected" ? h("button", {
+					type: "button",
+					className: "pcRemoteAction",
+					"aria-label": t("action.connect"),
+					onClick: () => {
+						nav.connectHost(host.profileId);
+					}
+				}, t("action.connect")) : null), hasTree && backend !== void 0 && backend.warning !== void 0 && backend.warning !== "" ? h("p", {
 					className: "pcRemoteNote",
 					"data-tone": "warn",
 					role: "status"
-				}, backend.warning), backend.catalogError === void 0 ? null : h("p", {
+				}, backend.warning) : null, hasTree && backend !== void 0 && backend.catalogError !== void 0 ? h("p", {
 					className: "pcRemoteNote",
 					"data-tone": "warn",
 					role: "status"
-				}, t("catalogError", { error: backend.catalogError })), hostOpen ? h(react.Fragment, null, ...backend.workspaces.map((workspace) => {
+				}, t("catalogError", { error: backend.catalogError })) : null, hostOpen && backend !== void 0 ? h(react.Fragment, null, ...backend.workspaces.map((workspace) => {
 					const projectKey = `${hostKey}/${workspace.id}`;
 					const workspaceAddress = {
 						kind: "external-workspace",
@@ -7379,13 +7466,36 @@ window.__ModuleLoader__.load({
 						className: "pcRemoteNew",
 						"aria-label": t("session.newIn", { name: workspace.name }),
 						title: t("session.new"),
-						disabled: offline,
+						disabled: backend.status !== "connected",
 						onClick: () => {
 							nav.createSession(workspaceAddress);
 						}
-					}, h(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutlineRegular, { size: 14 }))), renderSessions(backend, workspace));
+					}, h(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutlineRegular, { size: 14 }))), renderSessions(hostKey, backend, workspace));
 				}), backend.workspaces.length === 0 ? h("p", { className: "pcRemoteNote" }, t("workspace.empty")) : null) : null);
-			})) : null);
+			};
+			return h("section", {
+				className: "pcRemoteRoot",
+				"aria-label": t("section"),
+				"data-remote-secondary": "1"
+			}, h("style", { "data-perse-remote-nav-styles": "1" }, REMOTE_NAV_CSS), h("div", { className: "pcRemoteHeader" }, h("button", {
+				type: "button",
+				className: "pcRemoteTitle",
+				"aria-expanded": open,
+				"aria-label": t("section"),
+				onClick: () => {
+					setOpen((value) => !value);
+				}
+			}, h(Chevron, { open }), h("span", null, t("section"))), h("button", {
+				type: "button",
+				className: "pcRemoteManage",
+				"aria-label": t("connectionsAria"),
+				title: t("connections"),
+				onClick: openConnections
+			}, h(ManageIcon, null), h("span", null, t("connections")))), open ? h("div", { className: "pcRemoteList" }, snapshot.nativeSessionsAvailable ? null : h("p", {
+				className: "pcRemoteNote",
+				"data-tone": "warn",
+				role: "note"
+			}, t("upgrade")), snapshot.hosts.length === 0 ? h("p", { className: "pcRemoteNote" }, t("empty")) : null, ...snapshot.hosts.map(renderHost)) : null);
 		}
 		/** Leading host/project identity for a selected remote Session, in the native header. */
 		function RemoteSessionBadge(props) {
@@ -7454,6 +7564,16 @@ window.__ModuleLoader__.load({
 			const nav = createRemoteNavModel({
 				getBackends: () => nativeSessions.getBackends(),
 				subscribeBackends: (listener) => nativeSessions.subscribeBackends(listener),
+				getProfiles: () => controller.getSnapshot().profiles,
+				subscribeProfiles: (listener) => controller.subscribe(listener),
+				getActiveProfileId: () => nativeSessions.getActiveProfileId(),
+				connectProfile: (profileId) => {
+					controller.connectProfile(profileId).then((outcome) => {
+						if (!outcome.ok) console.warn(LOG, "remote host connect failed:", outcome.failure.code, outcome.failure.message);
+					}, (error) => {
+						console.warn(LOG, "remote host connect failed:", error);
+					});
+				},
 				navigation: navigationApiOf(serviceOf(ctx, "uiWorkspace")),
 				onActionError: (error) => {
 					console.warn(LOG, "remote session action failed:", error);
@@ -7471,10 +7591,10 @@ window.__ModuleLoader__.load({
 					hooks: { connection: controller }
 				})
 			}, PcConnectionSettings));
-			ctx.effect(() => ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
-				name: "sidebar.footer.action",
+			ctx.effect(() => ctx.slots.inject("sidebar.workspaces.secondary", () => ctx.slots.register({
+				name: "sidebar.workspaces.secondary",
 				id: "perse-remote-dev-remote-hosts",
-				order: 100,
+				order: 50,
 				locale: REMOTE_NAV_LOCALE,
 				inject: () => ({
 					nav,

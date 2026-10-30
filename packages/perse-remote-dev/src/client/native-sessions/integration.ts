@@ -55,6 +55,18 @@ export class PcNativeSessionIntegration {
   }
 
   /**
+   * The stored profile whose installed generation currently owns native
+   * sessions, if any. Exactly one backend is installed at a time — `install()`
+   * unregisters the previous one — so at most one host is active for
+   * sessions, even though `bridge.ts` can hold verified sockets for several
+   * profiles concurrently (its `connections` map is keyed by profileId and a
+   * connect only replaces that profile's own previous socket).
+   */
+  getActiveProfileId(): string | undefined {
+    return this.backend === undefined ? undefined : this.activeProfileId
+  }
+
+  /**
    * Resolve the remote model seat host (specs/005) for a client Session id: defined only
    * for Sessions owned by the current backend generation; local Sessions get undefined.
    */
