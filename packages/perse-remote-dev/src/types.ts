@@ -200,10 +200,13 @@ export interface PcProfileView {
   readonly protocolVersion?: string
   readonly verifiedAt?: string
   /**
-   * True when the saved profile was live at its last verification but this host
-   * process has no verified socket for it yet. The display status stays honest
-   * (`offline` until a live handshake); this flag alone marks the profile
-   * eligible for launch-time auto-reconnect. Absent = not eligible.
+   * True when the persisted connection intent is `connected` but this host process
+   * has no live verified socket for the profile, and the device grant is not
+   * revoked. The display status stays honest (`offline` until a live handshake);
+   * this flag alone marks the profile eligible for auto-reconnect, so writing down
+   * a transport loss (`offline`) never removes that eligibility. The intent itself
+   * is the persisted host-side `desiredState` field and is never returned here.
+   * Absent = not eligible.
    */
   readonly autoConnect?: boolean
 }
