@@ -66,3 +66,28 @@ Fix, in `0.3.1-rc.8` (commit `67f1d5f`): the contract states the hidden-page rul
 Live re-verification of `0.3.1-rc.8` on a fresh process (instance `http://127.0.0.1:59603`, new token, same isolated profile and Chrome window `8801`): stored state came back `spark-9732 status=connected protocol=1.4` with no manual click, `lxldeMac-mini.local status=offline` with intent `connected` (its gateway really is down). Screenshot `/tmp/rc8-01-two-states-fresh-process.png` (sha256 `323ad82470ecd4ff…`) shows both row states together, with the online host's two projects and per-project new-session controls.
 
 Interaction limit found the same morning: coordinate clicks were dispatched to window `8801` and changed nothing (the screenshot hash was bit-for-bit identical before and after two clicks). When the isolated Chrome window is not the frontmost window, pointer events land elsewhere; raising it steals the operator's focus, so the attempt was stopped rather than escalated.
+
+## A12 空闲页面自愈（rc.15，真机，2026-10-31 17:07）
+
+场景：两台已配对主机，其中 mac-mini 的网关真的断了（全程连不上）——这是 rc.9→rc.14 一直测不出问题的形状。
+
+| 步骤 | 观测 |
+|---|---|
+| 页面加载（rc.15，端口 62833） | `spark-9732` = `connected` |
+| 杀掉隧道 | 14s 后 = `offline` |
+| 恢复隧道 | `/health` = 200 |
+| 无人操作 | 下一次读行即回到 `connected`（日志：`pcConnect — profile=33c0f32c` → `ok generation=fab80e0f`） |
+
+同一段 RPC 轨迹（`PERSE_REMOTE_DEBUG=1`，实例任务 bash-f6e2c5647eda408f）：断行后立刻重试**正确的那台**（33c0f32c），隧道未恢复期间按退避失败 3 次，恢复后一次成功；期间另一台 9e36c386 在自己的梯子上独立失败，不再占用别人的状态。
+
+证据：`/tmp/rc15-01-selfhealed-two-hosts.png`（sha256 `36231f7b9384f1ca…`），窗口 8801「DeepSeek Harness」，`capture_id = capture_5954f6b9c7a04256a0d32a186b64acec_0000000000000072`，`snapshot_id = s000000ec`；行文本 `spark-9732 · spark 真机 · 在线` 与 `lxldeMac-mini.local · PC phase4 validation · 离线` 同屏。
+
+### 这一条为什么修了六版
+1. rc.9 加了「行状态翻转」触发器——但空闲页面根本不去读行。
+2. rc.10 加了 10s 定时读——隐藏页面被刻意跳过。
+3. rc.11 隐藏页面也读（30s）——没解决。
+4. rc.12 用**有 RPC 边界的测试**复现：一次永不返回的读把循环永久噤声（重排期写在 `finally`）。改为先排下一次再读。
+5. rc.13/14 加主机侧 RPC 日志才第一次看见真相：页面确实在读、在重试，但**只重试另一台**。
+6. rc.15 根因：丢失检测挂在 controller 那**一个** connection 槽上，而槽属于最后一次尝试的主机。改为按页面已安装的链路（`liveConnection`）判定。
+
+仍存的结构缺陷（已写成跳过测试 + 契约条款）：客户端 connection 仍是单槽，两台并存时失败那台仍会干扰在线那台的初始安装。
