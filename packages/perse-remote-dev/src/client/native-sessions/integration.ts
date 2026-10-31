@@ -14,6 +14,10 @@ const LOG = '[perse-remote-dev]'
 const RECONNECT_FIRST_DELAY_MS = 2_000
 const RECONNECT_MAX_DELAY_MS = 30_000
 
+// How often a visible page re-reads the stored rows: the host's own observation of its
+// socket, and the only thing that lets an idle page notice a dead host at all.
+const RECONNECT_PROFILE_POLL_MS = 10_000
+
 /** Connects the settings controller to DSH's optional native external-session registry. */
 export class PcNativeSessionIntegration {
   private readonly sessions: ExternalSessionsRegistry | undefined
@@ -36,6 +40,7 @@ export class PcNativeSessionIntegration {
    */
   private readonly rowSaidConnected = new Map<string, string>()
   /** Set only when a real document exists; the visibility rule is browser-side by nature. */
+  private pollTimer: ReturnType<typeof setTimeout> | undefined
   private visibilityDocument: { removeEventListener?: (type: string, listener: () => void) => void } | undefined
   private readonly onVisibilityChange = (): void => { this.attemptPendingReconnects() }
   private readonly reconnecting = new Set<string>()
@@ -131,6 +136,7 @@ export class PcNativeSessionIntegration {
     if (supported) {
       void this.restoreConnectedProfiles()
       this.attachVisibilityHook()
+      this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS)
     }
   }
 
@@ -151,14 +157,47 @@ export class PcNativeSessionIntegration {
 
   /** Runs every pending backoff attempt now; see the contract's hidden-page rule. */
   private attemptPendingReconnects(): void {
-    const doc = (globalThis as { document?: { visibilityState?: string } }).document
-    if (doc?.visibilityState !== 'visible') return
+    if (!this.pageVisible()) return
     for (const [profileId, timer] of [...this.reconnectTimers]) {
       clearTimeout(timer)
       this.reconnectTimers.delete(profileId)
       // The ladder is deliberately untouched: a resume is not a success, and the
       // attempt still re-reads the stored intent before it reaches the host.
       void this.attemptReconnect(profileId)
+    }
+    // Coming back into view is also the moment to re-read the rows rather than wait
+    // for the next tick: a host that died while the page was hidden becomes visible here.
+    void this.readProfileRows()
+  }
+
+  /** No document (node-side harnesses) counts as visible: there is no hidden state to respect. */
+  private pageVisible(): boolean {
+    const doc = (globalThis as { document?: { visibilityState?: string } }).document
+    return doc?.visibilityState === undefined || doc.visibilityState === 'visible'
+  }
+
+  private scheduleProfilePoll(delayMs: number): void {
+    if (this.disposed) return
+    if (this.pollTimer !== undefined) clearTimeout(this.pollTimer)
+    this.pollTimer = setTimeout(() => {
+      this.pollTimer = undefined
+      void this.readProfileRows()
+    }, delayMs)
+  }
+
+  /**
+   * The stored rows are the host's own observation of its socket. A page nobody is
+   * interacting with otherwise never learns that the link died, and a host-reported
+   * offline row is one of the two loss triggers (docs/pc-contract.md), so the read is
+   * what makes an idle page recover on its own. It is the same profile-list read the UI
+   * already performs — no extra wire method, no extra credential.
+   */
+  private async readProfileRows(): Promise<void> {
+    if (this.disposed) return
+    try {
+      if (this.pageVisible()) await this.controller.refreshProfiles()
+    } finally {
+      if (!this.disposed) this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS)
     }
   }
 
@@ -171,6 +210,8 @@ export class PcNativeSessionIntegration {
     this.visibilityDocument = undefined
     for (const timer of this.reconnectTimers.values()) clearTimeout(timer)
     this.reconnectTimers.clear()
+    if (this.pollTimer !== undefined) clearTimeout(this.pollTimer)
+    this.pollTimer = undefined
     this.reconnectFailures.clear()
     this.rowSaidConnected.clear()
     this.reconnecting.clear()

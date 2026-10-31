@@ -6739,6 +6739,7 @@ window.__ModuleLoader__.load({
 		const LOG$1 = "[perse-remote-dev]";
 		const RECONNECT_FIRST_DELAY_MS = 2e3;
 		const RECONNECT_MAX_DELAY_MS = 3e4;
+		const RECONNECT_PROFILE_POLL_MS = 1e4;
 		/** Connects the settings controller to DSH's optional native external-session registry. */
 		var PcNativeSessionIntegration = class {
 			sessions;
@@ -6761,6 +6762,7 @@ window.__ModuleLoader__.load({
 			*/
 			rowSaidConnected = /* @__PURE__ */ new Map();
 			/** Set only when a real document exists; the visibility rule is browser-side by nature. */
+			pollTimer;
 			visibilityDocument;
 			onVisibilityChange = () => {
 				this.attemptPendingReconnects();
@@ -6856,6 +6858,7 @@ window.__ModuleLoader__.load({
 				if (supported) {
 					this.restoreConnectedProfiles();
 					this.attachVisibilityHook();
+					this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS);
 				}
 			}
 			/**
@@ -6872,11 +6875,40 @@ window.__ModuleLoader__.load({
 			}
 			/** Runs every pending backoff attempt now; see the contract's hidden-page rule. */
 			attemptPendingReconnects() {
-				if (globalThis.document?.visibilityState !== "visible") return;
+				if (!this.pageVisible()) return;
 				for (const [profileId, timer] of [...this.reconnectTimers]) {
 					clearTimeout(timer);
 					this.reconnectTimers.delete(profileId);
 					this.attemptReconnect(profileId);
+				}
+				this.readProfileRows();
+			}
+			/** No document (node-side harnesses) counts as visible: there is no hidden state to respect. */
+			pageVisible() {
+				const doc = globalThis.document;
+				return doc?.visibilityState === void 0 || doc.visibilityState === "visible";
+			}
+			scheduleProfilePoll(delayMs) {
+				if (this.disposed) return;
+				if (this.pollTimer !== void 0) clearTimeout(this.pollTimer);
+				this.pollTimer = setTimeout(() => {
+					this.pollTimer = void 0;
+					this.readProfileRows();
+				}, delayMs);
+			}
+			/**
+			* The stored rows are the host's own observation of its socket. A page nobody is
+			* interacting with otherwise never learns that the link died, and a host-reported
+			* offline row is one of the two loss triggers (docs/pc-contract.md), so the read is
+			* what makes an idle page recover on its own. It is the same profile-list read the UI
+			* already performs — no extra wire method, no extra credential.
+			*/
+			async readProfileRows() {
+				if (this.disposed) return;
+				try {
+					if (this.pageVisible()) await this.controller.refreshProfiles();
+				} finally {
+					if (!this.disposed) this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS);
 				}
 			}
 			dispose() {
@@ -6886,6 +6918,8 @@ window.__ModuleLoader__.load({
 				this.visibilityDocument = void 0;
 				for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
 				this.reconnectTimers.clear();
+				if (this.pollTimer !== void 0) clearTimeout(this.pollTimer);
+				this.pollTimer = void 0;
 				this.reconnectFailures.clear();
 				this.rowSaidConnected.clear();
 				this.reconnecting.clear();

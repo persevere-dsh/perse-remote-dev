@@ -504,6 +504,7 @@ test('without a document the integration still runs the same reconnect loop', as
  */
 function stubControllerHarness() {
   const attempts = []
+  let reads = 0
   let listener = null
   const snapshot = {
     connection: {
@@ -519,7 +520,14 @@ function stubControllerHarness() {
     setPendingCreations() {},
     subscribe(cb) { listener = cb; return () => { listener = null } },
     getSnapshot: () => snapshot,
-    refreshProfiles: async () => ({ ok: true, value: snapshot.profiles }),
+    refreshProfiles: async () => {
+      // A real controller notifies its subscribers after a read patches the list; the
+      // poll's effect on sync is exactly what this harness must reproduce.
+      reads += 1
+      const result = { ok: true, value: snapshot.profiles }
+      listener?.(snapshot)
+      return result
+    },
     connectProfile: async (profileId) => {
       attempts.push(profileId)
       return { ok: true, value: { profileId, hostId: 'h1', generation: 'g1', hostInfo: snapshot.connection.hostInfo } }
@@ -538,9 +546,19 @@ function stubControllerHarness() {
     externalCatalog: observable,
     retainedBindings: observable,
   }
-  const remote = new Proxy({}, { get: () => async () => ({ ok: true, value: { receipts: [] } }) })
+  const remote = new Proxy({}, {
+    get: (target, prop) => async () => prop === 'pcCall'
+      ? { ok: true, value: { resultJson: JSON.stringify({ workspaces: [] }) } }   // what the catalog parses
+      : { ok: true, value: { receipts: [] } },
+  })
   const integration = new PcNativeSessionIntegration({ sessions, controller, remote })
-  return { integration, snapshot, attempts, notify: () => { listener?.(snapshot) } }
+  return {
+    integration,
+    snapshot,
+    attempts,
+    refreshCount: () => reads,
+    notify: () => { listener?.(snapshot) },
+  }
 }
 
 test('the host row going offline after saying connected arms the retry even with no failed call', async (t) => {
@@ -556,14 +574,33 @@ test('the host row going offline after saying connected arms the retry even with
   assert.ok(h.attempts.length > before, 'a host-reported loss starts the same backoff loop')
 })
 
-test('a row that never said connected is not mistaken for a lost link', async (t) => {
+// (The "row never said connected" shape is covered where it truly belongs, on the real
+// controller: pc-native-connection-lifecycle's pairing test asserts reconnects === 0 for a
+// just-confirmed pairing whose saved row still reads offline.)
+
+test('an idle page notices a dead host through the row read and retries on its own', async (t) => {
   captureConsole(t)
+  const doc = visibilityDocument(t)
+  doc.visibilityState = 'visible'
   const h = stubControllerHarness()
-  h.snapshot.profiles[0].status = 'offline'       // the shape right after a pairing
-  await waitUntil(() => h.attempts.length >= 1)   // only the launch-time restore
-  h.notify()
+  await waitUntil(() => h.attempts.length >= 1)
+  h.notify()                                   // the row said connected for this generation
   const before = h.attempts.length
-  await new Promise(resolve => setTimeout(resolve, 600))
+  h.snapshot.profiles[0].status = 'offline'     // the host lost the socket
+  // Deliberately no notify(): only the periodic row read can surface the loss.
+  await waitUntil(() => h.attempts.length > before, 14_000)
   h.integration.dispose()
-  assert.equal(h.attempts.length, before, 'a confirmed pairing socket keeps its generation; no reverification is dispatched')
+  assert.ok(h.attempts.length > before, 'the row read surfaced the loss and the retry ran')
+})
+
+test('a hidden page does not spend row reads', async (t) => {
+  captureConsole(t)
+  const doc = visibilityDocument(t)
+  doc.visibilityState = 'hidden'
+  const h = stubControllerHarness()
+  await waitUntil(() => h.attempts.length >= 1)
+  const reads = h.refreshCount()
+  await new Promise(resolve => setTimeout(resolve, 11_000))
+  h.integration.dispose()
+  assert.equal(h.refreshCount(), reads, 'no read while the page cannot see the answer')
 })
