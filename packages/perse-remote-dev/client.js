@@ -6906,11 +6906,10 @@ window.__ModuleLoader__.load({
 			*/
 			async readProfileRows() {
 				if (this.disposed) return;
+				this.scheduleProfilePoll(this.pageVisible() ? RECONNECT_PROFILE_POLL_MS : RECONNECT_PROFILE_POLL_HIDDEN_MS);
 				try {
 					await this.controller.refreshProfiles();
-				} finally {
-					if (!this.disposed) this.scheduleProfilePoll(this.pageVisible() ? RECONNECT_PROFILE_POLL_MS : RECONNECT_PROFILE_POLL_HIDDEN_MS);
-				}
+				} catch {}
 			}
 			dispose() {
 				if (this.disposed) return;

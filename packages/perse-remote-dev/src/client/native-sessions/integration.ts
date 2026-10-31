@@ -197,16 +197,18 @@ export class PcNativeSessionIntegration {
    */
   private async readProfileRows(): Promise<void> {
     if (this.disposed) return
+    // The next tick is armed *before* the read is awaited. A host whose socket is gone can
+    // leave a request unanswered — with the re-arm in a `finally`, one such read silences the
+    // page forever, which is exactly the live failure this loop exists to prevent.
+    this.scheduleProfilePoll(this.pageVisible()
+      ? RECONNECT_PROFILE_POLL_MS
+      : RECONNECT_PROFILE_POLL_HIDDEN_MS)
     try {
-      // Deliberately not skipped while hidden: the background page is exactly the case
-      // that has to find a dead host by itself (docs/pc-contract.md).
+      // Deliberately not skipped while hidden: the background page is exactly the case that
+      // has to find a dead host by itself (docs/pc-contract.md).
       await this.controller.refreshProfiles()
-    } finally {
-      if (!this.disposed) {
-        this.scheduleProfilePoll(this.pageVisible()
-          ? RECONNECT_PROFILE_POLL_MS
-          : RECONNECT_PROFILE_POLL_HIDDEN_MS)
-      }
+    } catch {
+      // A failed read is not special: the tick that was just armed reads again.
     }
   }
 
