@@ -14,9 +14,12 @@ const LOG = '[perse-remote-dev]'
 const RECONNECT_FIRST_DELAY_MS = 2_000
 const RECONNECT_MAX_DELAY_MS = 30_000
 
-// How often a visible page re-reads the stored rows: the host's own observation of its
-// socket, and the only thing that lets an idle page notice a dead host at all.
+// How often a page re-reads the stored rows: the host's own observation of its socket,
+// and the only thing that lets an idle page notice a dead host at all. A hidden page keeps
+// reading, just less often — a background tab is the case that must recover on its own, and
+// Chrome throttles hidden tabs toward one timer per minute anyway.
 const RECONNECT_PROFILE_POLL_MS = 10_000
+const RECONNECT_PROFILE_POLL_HIDDEN_MS = 30_000
 
 /** Connects the settings controller to DSH's optional native external-session registry. */
 export class PcNativeSessionIntegration {
@@ -195,9 +198,15 @@ export class PcNativeSessionIntegration {
   private async readProfileRows(): Promise<void> {
     if (this.disposed) return
     try {
-      if (this.pageVisible()) await this.controller.refreshProfiles()
+      // Deliberately not skipped while hidden: the background page is exactly the case
+      // that has to find a dead host by itself (docs/pc-contract.md).
+      await this.controller.refreshProfiles()
     } finally {
-      if (!this.disposed) this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS)
+      if (!this.disposed) {
+        this.scheduleProfilePoll(this.pageVisible()
+          ? RECONNECT_PROFILE_POLL_MS
+          : RECONNECT_PROFILE_POLL_HIDDEN_MS)
+      }
     }
   }
 

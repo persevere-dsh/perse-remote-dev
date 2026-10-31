@@ -6740,6 +6740,7 @@ window.__ModuleLoader__.load({
 		const RECONNECT_FIRST_DELAY_MS = 2e3;
 		const RECONNECT_MAX_DELAY_MS = 3e4;
 		const RECONNECT_PROFILE_POLL_MS = 1e4;
+		const RECONNECT_PROFILE_POLL_HIDDEN_MS = 3e4;
 		/** Connects the settings controller to DSH's optional native external-session registry. */
 		var PcNativeSessionIntegration = class {
 			sessions;
@@ -6906,9 +6907,9 @@ window.__ModuleLoader__.load({
 			async readProfileRows() {
 				if (this.disposed) return;
 				try {
-					if (this.pageVisible()) await this.controller.refreshProfiles();
+					await this.controller.refreshProfiles();
 				} finally {
-					if (!this.disposed) this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS);
+					if (!this.disposed) this.scheduleProfilePoll(this.pageVisible() ? RECONNECT_PROFILE_POLL_MS : RECONNECT_PROFILE_POLL_HIDDEN_MS);
 				}
 			}
 			dispose() {

@@ -593,14 +593,17 @@ test('an idle page notices a dead host through the row read and retries on its o
   assert.ok(h.attempts.length > before, 'the row read surfaced the loss and the retry ran')
 })
 
-test('a hidden page does not spend row reads', async (t) => {
+test('a hidden page still reads the rows instead of staying silent', async (t) => {
   captureConsole(t)
   const doc = visibilityDocument(t)
   doc.visibilityState = 'hidden'
   const h = stubControllerHarness()
-  await waitUntil(() => h.attempts.length >= 1)
   const reads = h.refreshCount()
-  await new Promise(resolve => setTimeout(resolve, 11_000))
+  // The first tick is armed at construction; what matters here is that hiding the page does
+  // not silence it — a background tab is exactly where a dead host has to be discovered.
+  // The slower hidden step (30s) is a constant in the integration, not asserted: an
+  // assertion that waits for it would make the suite pay 40 seconds for one number.
+  await waitUntil(() => h.refreshCount() > reads, 12_000)
   h.integration.dispose()
-  assert.equal(h.refreshCount(), reads, 'no read while the page cannot see the answer')
+  assert.ok(h.refreshCount() > reads, 'a hidden page still performs the row read')
 })
