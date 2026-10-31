@@ -67,6 +67,7 @@ export type PcNativeSessionDecodeError =
   | { readonly code: 'invalid-event'; readonly message: string; readonly gatewaySequence?: number }
   | { readonly code: 'cursor-expired'; readonly message: string; readonly retentionFloor: number; readonly afterSequence: number }
   | { readonly code: 'event-limit'; readonly message: string; readonly limit: number }
+  | { readonly code: 'invalid-model-list'; readonly message: string; readonly limit?: number }
 
 export type PcNativeSessionResult<T> =
   | { readonly ok: true; readonly value: T }
@@ -334,6 +335,100 @@ function base64Sextet(code: number): number {
   if (code === 43) return 62
   if (code === 47) return 63
   return -1
+}
+
+/** v1.3 `model.list` row as returned by the verified host catalog. */
+export interface PcRemoteModel {
+  /** Stable `<provider>/<model>` route id accepted by session.create / session.setModel. */
+  readonly id: string
+  readonly provider: string
+  readonly providerName: string
+  readonly name: string
+  readonly isDefault: boolean
+  readonly selectable: boolean
+  readonly reasoningEfforts?: readonly string[]
+}
+
+export interface PcRemoteModelList {
+  readonly models: readonly PcRemoteModel[]
+  readonly default: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string } | null
+  readonly failures: readonly { readonly provider: string; readonly reason: string }[]
+  readonly truncated: boolean
+}
+
+const MAX_REMOTE_MODELS = 256
+const MAX_REMOTE_MODEL_ID_CHARS = 512
+const MAX_REMOTE_MODEL_NAME_CHARS = 200
+const MAX_REMOTE_MODEL_FAILURES = 16
+
+/** Boundary decoder for the v1.3 model.list payload; rejects any host data outside the contract. */
+export function decodePcModelList(resultJson: string): PcNativeSessionResult<PcRemoteModelList> {
+  const parsed = parseResult(resultJson)
+  if (!parsed.ok) return failure({ code: 'invalid-model-list', message: 'The remote model list response was not a valid JSON object.' })
+  const rows = parsed.value.models
+  if (!Array.isArray(rows)) return failure({ code: 'invalid-model-list', message: 'The remote host returned an invalid model list.' })
+  if (rows.length > MAX_REMOTE_MODELS) {
+    return failure({ code: 'invalid-model-list', message: 'The remote model list exceeded the protocol model cap.', limit: MAX_REMOTE_MODELS })
+  }
+  const models: PcRemoteModel[] = []
+  const ids = new Set<string>()
+  for (const row of rows) {
+    const value = asRecord(row)
+    if (value === null || !nonEmpty(value.id) || value.id.length > MAX_REMOTE_MODEL_ID_CHARS || !value.id.includes('/')
+      || !nonEmpty(value.provider) || value.provider.length > MAX_REMOTE_MODEL_NAME_CHARS
+      || !nonEmpty(value.providerName) || value.providerName.length > MAX_REMOTE_MODEL_NAME_CHARS
+      || !nonEmpty(value.name) || value.name.length > MAX_REMOTE_MODEL_NAME_CHARS
+      || typeof value.isDefault !== 'boolean' || typeof value.selectable !== 'boolean'
+      || (value.reasoningEfforts !== undefined && (
+        !Array.isArray(value.reasoningEfforts)
+        || !value.reasoningEfforts.every((effort: unknown) => typeof effort === 'string' && effort.length > 0 && effort.length <= MAX_REMOTE_MODEL_NAME_CHARS)))
+      || ids.has(value.id)) {
+      return failure({ code: 'invalid-model-list', message: 'The remote host returned an invalid or duplicate model row.' })
+    }
+    ids.add(value.id)
+    models.push({
+      id: value.id,
+      provider: value.provider,
+      providerName: value.providerName,
+      name: value.name,
+      isDefault: value.isDefault,
+      selectable: value.selectable,
+      ...(Array.isArray(value.reasoningEfforts) ? { reasoningEfforts: value.reasoningEfforts as readonly string[] } : {}),
+    })
+  }
+  if (models.filter(model => model.isDefault).length > 1) {
+    return failure({ code: 'invalid-model-list', message: 'The remote model list advertised more than one default model.' })
+  }
+  const rawDefault = parsed.value.default
+  let defaultValue: PcRemoteModelList['default'] = null
+  if (rawDefault !== null) {
+    const record = asRecord(rawDefault)
+    if (record === null || !nonEmpty(record.provider) || !nonEmpty(record.model)
+      || (record.reasoningEffort !== undefined && (typeof record.reasoningEffort !== 'string' || !record.reasoningEffort))) {
+      return failure({ code: 'invalid-model-list', message: 'The remote model list carried an invalid default selection.' })
+    }
+    defaultValue = {
+      provider: record.provider,
+      model: record.model,
+      ...(typeof record.reasoningEffort === 'string' ? { reasoningEffort: record.reasoningEffort } : {}),
+    }
+  }
+  const rawFailures = parsed.value.failures
+  if (!Array.isArray(rawFailures) || rawFailures.length > MAX_REMOTE_MODEL_FAILURES) {
+    return failure({ code: 'invalid-model-list', message: 'The remote model list carried an invalid provider failure list.', limit: MAX_REMOTE_MODEL_FAILURES })
+  }
+  const failuresList: { readonly provider: string; readonly reason: string }[] = []
+  for (const row of rawFailures) {
+    const value = asRecord(row)
+    if (value === null || !nonEmpty(value.provider) || !nonEmpty(value.reason)) {
+      return failure({ code: 'invalid-model-list', message: 'The remote model list carried an invalid provider failure row.' })
+    }
+    failuresList.push({ provider: value.provider, reason: value.reason })
+  }
+  if (typeof parsed.value.truncated !== 'boolean') {
+    return failure({ code: 'invalid-model-list', message: 'The remote model list did not state truncation.' })
+  }
+  return { ok: true, value: { models, default: defaultValue, failures: failuresList, truncated: parsed.value.truncated } }
 }
 
 function statusFor(sourceType: string, payload: Readonly<Record<string, unknown>>): string | undefined {

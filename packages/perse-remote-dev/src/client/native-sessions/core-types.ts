@@ -31,6 +31,9 @@ export interface ObservableSnapshot<T> {
   subscribe(listener: () => void): () => void
 }
 
+export type ExternalBackendId = import('@deepseek-ai/dsh-api-session-controller/client').ExternalBackendId
+export type ExternalHostId = import('@deepseek-ai/dsh-api-session-controller/client').ExternalHostId
+export type ExternalSessionBindingInfo = import('@deepseek-ai/dsh-api-session-controller/client').ExternalSessionBindingInfo
 export type ExternalSessionAddress = DshExternalSessionAddress
 export type ExternalWorkspaceAddress = DshExternalWorkspaceAddress
 export type ExternalSessionCapabilities = DshExternalSessionCapabilities

@@ -16,9 +16,11 @@ import type {
 import { PcNativeSessionFace, makePcRemoteError } from './session-face.ts'
 import { pcSubmissionReceipts } from './submission-receipts.ts'
 import {
+  decodePcModelList,
   decodePcSessionCreate,
   decodePcSessionList,
   decodePcWorkspaceList,
+  type PcRemoteModelList,
   type PcRemoteSession,
 } from './protocol.ts'
 
@@ -59,6 +61,8 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
   readonly profileName: string
   readonly generation: ExternalBackendGenerationType
   readonly capabilities: ExternalSessionCapabilities
+  /** v1.3 host model advertisement (host.info capabilities `modelList`/`modelSelect`); never assumed. */
+  readonly modelSupport: { readonly list: boolean; readonly select: boolean }
   readonly catalog: MutableSnapshot<ExternalSessionCatalog>
   private readonly remote: PcRemote
   private readonly hostInfo: Readonly<Record<string, unknown>>
@@ -66,6 +70,8 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
   private readonly onOffline: (reason: unknown) => void
   private readonly onCreationReceiptChange: () => void
   private readonly blankSessions = new Set<string>()
+  private readonly defaultModelByWorkspace = new Map<string, string>()
+  private modelListFlight: Promise<PcRemoteModelList> | undefined
   private readonly faces = new Map<string, PcNativeSessionFace>()
   private disposed = false
   private refreshFlight: Promise<void> | undefined
@@ -90,6 +96,7 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
     this.onOffline = options.onOffline
     this.onCreationReceiptChange = options.onCreationReceiptChange ?? (() => undefined)
     this.capabilities = capabilitiesOf(options.hostInfo)
+    this.modelSupport = modelSupportOf(options.hostInfo)
     this.catalog = new Snapshot<ExternalSessionCatalog>(this.catalogValue('connected', []))
   }
 
@@ -175,6 +182,16 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
         method: 'session.create', capability: 'providers',
       })
     }
+    // A model may come from the caller or from the plugin's stored workspace choice. The
+    // verified host must advertise model selection, or the request fails explicitly here —
+    // nothing is dispatched, and no local model is ever substituted (005 contract).
+    const requestedModel = request.options.model ?? this.defaultModelByWorkspace.get(request.address.workspaceId)
+    if (requestedModel !== undefined && !this.modelSelectionAvailable()) {
+      throw makePcRemoteError('remote-dev/pc-native-capability-unavailable',
+        'The verified host does not advertise model selection, so the requested model was not sent and no local model was substituted.',
+        { method: 'session.create(model)', capability: 'modelSelection', model: requestedModel },
+      )
+    }
     const operationId = createOperationId()
     const creationReceipt = {
       kind: 'create' as const,
@@ -196,7 +213,7 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
       const resultJson = await this.call('session.create', {
         workspaceId: request.address.workspaceId,
         provider,
-        ...(request.options.model === undefined ? {} : { model: request.options.model }),
+        ...(requestedModel === undefined ? {} : { model: requestedModel }),
       }, request.signal)
       const decoded = decodePcSessionCreate(resultJson, request.address.workspaceId)
       if (!decoded.ok) throw invalidCatalog('session.create', decoded.error.message)
@@ -218,6 +235,95 @@ export class PcNativeSessionBackend implements ExternalSessionBackend {
       this.updateCreationWarning()
       this.onCreationReceiptChange()
     }
+  }
+
+  /** The 1.3 seat surface may render only when the verified host advertises both wire capabilities. */
+  modelSelectionAvailable(): boolean {
+    return this.modelSupport.list && this.modelSupport.select
+  }
+
+  /** Read the verified host's own model catalog. Never guesses, never falls back to local models. */
+  async listModels(options: { readonly fresh?: boolean } = {}): Promise<PcRemoteModelList> {
+    this.assertCurrent('model.list')
+    if (!this.modelSupport.list) throw modelCapabilityUnavailable('model.list')
+    if (!options.fresh && this.modelListFlight !== undefined) return this.modelListFlight
+    const flight = (async (): Promise<PcRemoteModelList> => {
+      const resultJson = await this.call('model.list', {})
+      const decoded = decodePcModelList(resultJson)
+      if (!decoded.ok) {
+        throw invalidCatalog('model.list', `catalog payload was invalid (${decoded.error.code}): ${decoded.error.message}`)
+      }
+      return decoded.value
+    })()
+    this.modelListFlight = flight
+    void flight.catch(() => { if (this.modelListFlight === flight) this.modelListFlight = undefined })
+    return flight
+  }
+
+  /**
+   * Select the model for one existing remote Session on the owning host. One dispatch only:
+   * an unknown transport outcome is never auto-retried (the caller re-reads state instead).
+   */
+  async setModel(sessionId: string, model: string, reasoningEffort?: string): Promise<{ readonly provider: string; readonly model: string; readonly reasoningEffort?: string }> {
+    this.assertCurrent('session.setModel')
+    if (!this.modelSelectionAvailable()) throw modelCapabilityUnavailable('session.setModel')
+    const resultJson = await this.call('session.setModel', {
+      sessionId,
+      model,
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+    })
+    let parsed: unknown
+    try { parsed = JSON.parse(resultJson) as unknown } catch {
+      throw invalidCatalog('session.setModel', 'response was not valid JSON')
+    }
+    const record = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown> : null
+    const selection = record !== null && typeof record.model === 'object' && record.model !== null && !Array.isArray(record.model)
+      ? record.model as Record<string, unknown> : null
+    if (selection === null || typeof selection.provider !== 'string' || !selection.provider
+      || typeof selection.model !== 'string' || !selection.model) {
+      throw invalidCatalog('session.setModel', 'response did not contain the accepted selection')
+    }
+    return {
+      provider: selection.provider,
+      model: selection.model,
+      ...(typeof selection.reasoningEffort === 'string' ? { reasoningEffort: selection.reasoningEffort } : {}),
+    }
+  }
+
+  /**
+   * Store the workspace's chosen remote model for future remote Session creates. The model
+   * must appear in the verified host's own catalog; unsupported hosts fail explicitly.
+   */
+  async setDefaultModel(workspaceId: string, model: string | null): Promise<void> {
+    this.assertCurrent('session.setModel')
+    if (model === null) {
+      this.defaultModelByWorkspace.delete(workspaceId)
+      return
+    }
+    const catalog = await this.listModels()
+    const match = catalog.models.find(entry => entry.id === model)
+    if (match === undefined || !match.selectable) {
+      throw makePcRemoteError('remote-dev/pc-native-capability-unavailable',
+        `Model ${model} is not selectable on the verified host; nothing was stored and no local model was substituted.`,
+        { method: 'session.create(model)', capability: 'modelSelection', model })
+    }
+    this.defaultModelByWorkspace.set(workspaceId, model)
+  }
+
+  getDefaultModel(workspaceId: string): string | undefined {
+    return this.defaultModelByWorkspace.get(workspaceId)
+  }
+
+  /** Durable host model selection projected for an open remote Session, for the remote model seat. */
+  currentSelectionOf(remoteSessionId: string): { readonly provider: string; readonly model: string } | null {
+    const face = this.faces.get(remoteSessionId)
+    if (face === undefined) return null
+    const projected = face.projections.faceOf('modelSelection').getSnapshot() as
+      { next?: { provider?: unknown; model?: unknown } | null } | undefined
+    const selection = projected?.next
+    if (selection === null || selection === undefined || typeof selection.provider !== 'string' || typeof selection.model !== 'string') return null
+    return { provider: selection.provider, model: selection.model }
   }
 
   openSession(request: ExternalSessionOpenRequest): ExternalSessionOpenHandle {
@@ -365,6 +471,10 @@ function capabilitiesOf(hostInfo: Readonly<Record<string, unknown>>): ExternalSe
     rename: sessionSupport,
     readAttachment: methods.has('attachments'),
     fileUpload: false,
+    // Frozen seam rule (005): the core model seat reads the one Host-generation LOCAL
+    // catalog, so it must stay false for external bindings. Remote model discovery and
+    // selection ride the plugin's composer-seam contribution (`conversation.input.right`)
+    // over the host's `model.list`/`session.setModel`; the local reject path stays intact.
     modelSelection: false,
     approvalActions: methods.has('approvals'),
     command: false,
@@ -379,6 +489,19 @@ function defaultProviderOf(hostInfo: Readonly<Record<string, unknown>>): string 
   const selected = providers.find(provider => provider.available === true && typeof provider.id === 'string' && provider.id === 'dsh')
     ?? providers.find(provider => provider.available === true && typeof provider.id === 'string')
   return typeof selected?.id === 'string' ? selected.id : undefined
+}
+
+function modelSupportOf(hostInfo: Readonly<Record<string, unknown>>): { readonly list: boolean; readonly select: boolean } {
+  const methods = new Set(Array.isArray(hostInfo.capabilities)
+    ? hostInfo.capabilities.filter((item): item is string => typeof item === 'string')
+    : [])
+  return { list: methods.has('modelList'), select: methods.has('modelSelect') }
+}
+
+function modelCapabilityUnavailable(method: string): Error {
+  return makePcRemoteError('remote-dev/pc-native-capability-unavailable',
+    'The verified host does not advertise model selection, so the model request was not sent and no local model was substituted.',
+    { method, capability: 'modelSelection' })
 }
 
 function invalidCatalog(method: string, reason: string): Error {

@@ -30,6 +30,13 @@ const protocolSources = [
     packageMirror: 'protocol/v1.2.md',
     sha256: '7efce2961a553e8089ddd618d03ca63940ad51b39be60f4f0d90e94bc9715047',
   },
+  {
+    id: '005-remote-model-selection',
+    source: join(canonicalRoot, 'specs/005-remote-model-selection/contracts/protocol.md'),
+    rootMirror: 'docs/protocol/v1.3.md',
+    packageMirror: 'protocol/v1.3.md',
+    sha256: '45417131c369aca4435500865ed60633cd3deb08f248747bd9178a770f3dd6a3',
+  },
 ]
 
 const localHashes = []
@@ -38,6 +45,7 @@ try {
   await access(join(canonicalRoot, 'specs/001-remote-development/contracts/protocol.md'))
   await access(join(canonicalRoot, 'specs/002-mobile-workflows/contracts/protocol.md'))
   await access(join(canonicalRoot, 'specs/003-task-centered-experience/contracts/protocol.md'))
+  await access(join(canonicalRoot, 'specs/005-remote-model-selection/contracts/protocol.md'))
 } catch (error) {
   if (explicitCanonicalRoot !== undefined) throw new Error(`explicit PERSE_REMOTE_CANONICAL_ROOT is unavailable: ${canonicalRoot}`, { cause: error })
   canonicalAvailable = false
@@ -69,7 +77,7 @@ for (const item of protocolSources) {
 }
 const manifest = {
   contract: '004-pc-remote-development',
-  generatedFrom: 'root docs/pc-* and docs/protocol/*; protocol digests are frozen and optionally checked against specs/001..003/contracts/protocol.md',
+  generatedFrom: 'root docs/pc-* and docs/protocol/*; protocol digests are frozen and optionally checked against specs/001,002,003,005/contracts/protocol.md',
   canonicalPerseSpecsVerified: canonicalAvailable,
   mirrors: localHashes,
 }

@@ -157,10 +157,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     }
     /** Legacy URL-opening routes have been retired in favor of paired Perse 1.2 profiles. */
     'remote-dev/pc-legacy-retired': { readonly method: string }
-    /** A native DSH session operation cannot be represented by Perse 1.2. */
+    /** A native DSH session operation is not advertised by the verified host (specs/005 adds the requested model). */
     'remote-dev/pc-native-capability-unavailable': {
       readonly method: string
       readonly capability: string
+      /** Model route the request named, when the refusal concerns a specific model. */
+      readonly model?: string
     }
     /** Remote native history is no longer retained at the requested cursor. */
     'remote-dev/pc-native-history-expired': {
@@ -197,6 +199,16 @@ export interface PcProfileView {
   readonly status: 'disconnected' | 'connected' | 'offline' | 'revoked'
   readonly protocolVersion?: string
   readonly verifiedAt?: string
+  /**
+   * True when the persisted connection intent is `connected` but this host process
+   * has no live verified socket for the profile, and the device grant is not
+   * revoked. The display status stays honest (`offline` until a live handshake);
+   * this flag alone marks the profile eligible for auto-reconnect, so writing down
+   * a transport loss (`offline`) never removes that eligibility. The intent itself
+   * is the persisted host-side `desiredState` field and is never returned here.
+   * Absent = not eligible.
+   */
+  readonly autoConnect?: boolean
 }
 
 /** Result of listing locally stored PC connection profiles. */

@@ -35,6 +35,12 @@ test('PC settings waits for DSH sessions activation before checking optional nat
   await Promise.resolve()
   assert.equal(nativeSupport, undefined, 'native integration must wait for the locale dependency too')
   ctx.provide('locale', { bind() {} })
+  await Promise.resolve()
+  assert.equal(nativeSupport, undefined, 'native integration must wait for the layout dependency too')
+  ctx.provide('layout', { selectPanel() {} })
+  await Promise.resolve()
+  assert.equal(nativeSupport, undefined, 'native integration must wait for the Workspace navigation dependency too')
+  ctx.provide('uiWorkspace', {})
   await plugin
   assert.equal(nativeSupport, true, 'the extension API is checked after sessions activation')
   await ctx.root.fiber.dispose()

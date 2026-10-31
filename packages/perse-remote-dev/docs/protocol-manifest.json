@@ -1,6 +1,6 @@
 {
   "contract": "004-pc-remote-development",
-  "generatedFrom": "root docs/pc-* and docs/protocol/*; protocol digests are frozen and optionally checked against specs/001..003/contracts/protocol.md",
+  "generatedFrom": "root docs/pc-* and docs/protocol/*; protocol digests are frozen and optionally checked against specs/001,002,003,005/contracts/protocol.md",
   "canonicalPerseSpecsVerified": true,
   "mirrors": [
     {
@@ -20,6 +20,12 @@
       "source": "specs/003-task-centered-experience/contracts/protocol.md",
       "mirror": "protocol/v1.2.md",
       "sha256": "7efce2961a553e8089ddd618d03ca63940ad51b39be60f4f0d90e94bc9715047"
+    },
+    {
+      "id": "005-remote-model-selection",
+      "source": "specs/005-remote-model-selection/contracts/protocol.md",
+      "mirror": "protocol/v1.3.md",
+      "sha256": "45417131c369aca4435500865ed60633cd3deb08f248747bd9178a770f3dd6a3"
     }
   ]
 }

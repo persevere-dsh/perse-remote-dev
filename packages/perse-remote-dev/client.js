@@ -441,7 +441,8 @@ window.__ModuleLoader__.load({
 				zod.z.literal("revoked")
 			]).readonly(),
 			"protocolVersion": zod.z.string().readonly().optional(),
-			"verifiedAt": zod.z.string().readonly().optional()
+			"verifiedAt": zod.z.string().readonly().optional(),
+			"autoConnect": zod.z.boolean().readonly().optional().describe("True when the persisted connection intent is `connected` but this host process has no live verified socket for the profile, and the device grant is not revoked. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for auto-reconnect, so writing down a transport loss (`offline`) never removes that eligibility. The intent itself is the persisted host-side `desiredState` field and is never returned here. Absent = not eligible.")
 		})).readonly() });
 		let perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value;
 		const perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema = () => perse_remote_dev_remoteDev_pcRevoke_parameter_0$schema$value ??= zod.z.object({
@@ -875,7 +876,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 586,
+						"line": 610,
 						"column": 3
 					}
 				},
@@ -997,7 +998,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 519,
+						"line": 543,
 						"column": 9
 					}
 				},
@@ -1085,7 +1086,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 803,
+						"line": 827,
 						"column": 9
 					}
 				},
@@ -1162,7 +1163,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 444,
+						"line": 468,
 						"column": 9
 					}
 				},
@@ -1249,7 +1250,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 423,
+						"line": 447,
 						"column": 9
 					}
 				},
@@ -1428,7 +1429,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 485,
+						"line": 509,
 						"column": 9
 					}
 				},
@@ -1588,7 +1589,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 317,
+						"line": 341,
 						"column": 9
 					}
 				},
@@ -1673,7 +1674,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 573,
+						"line": 597,
 						"column": 3
 					}
 				},
@@ -1833,7 +1834,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 549,
+						"line": 573,
 						"column": 9
 					}
 				},
@@ -1932,7 +1933,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 561,
+						"line": 585,
 						"column": 9
 					}
 				},
@@ -2006,7 +2007,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 305,
+						"line": 329,
 						"column": 9
 					}
 				},
@@ -2064,7 +2065,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 276,
+						"line": 287,
 						"column": 3
 					}
 				},
@@ -2118,7 +2119,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 282,
+						"line": 306,
 						"column": 9
 					}
 				},
@@ -2172,7 +2173,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 290,
+						"line": 314,
 						"column": 9
 					}
 				},
@@ -2236,7 +2237,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 270,
+						"line": 281,
 						"column": 3
 					}
 				},
@@ -2307,7 +2308,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 263,
+						"line": 274,
 						"column": 3
 					}
 				},
@@ -2377,7 +2378,11 @@ window.__ModuleLoader__.load({
 											]
 										},
 										"protocolVersion": { "type": "string" },
-										"verifiedAt": { "type": "string" }
+										"verifiedAt": { "type": "string" },
+										"autoConnect": {
+											"type": "boolean",
+											"description": "True when the persisted connection intent is `connected` but this host process has no live verified socket for the profile, and the device grant is not revoked. The display status stays honest (`offline` until a live handshake); this flag alone marks the profile eligible for auto-reconnect, so writing down a transport loss (`offline`) never removes that eligibility. The intent itself is the persisted host-side `desiredState` field and is never returned here. Absent = not eligible."
+										}
 									},
 									"required": [
 										"profileId",
@@ -2398,7 +2403,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 255,
+						"line": 264,
 						"column": 9
 					}
 				},
@@ -2458,7 +2463,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 298,
+						"line": 322,
 						"column": 9
 					}
 				},
@@ -2695,7 +2700,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 359,
+						"line": 383,
 						"column": 9
 					}
 				},
@@ -2884,7 +2889,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 650,
+						"line": 674,
 						"column": 9
 					}
 				},
@@ -3086,7 +3091,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 624,
+						"line": 648,
 						"column": 9
 					}
 				},
@@ -3244,7 +3249,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 752,
+						"line": 776,
 						"column": 9
 					}
 				},
@@ -3377,7 +3382,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 775,
+						"line": 799,
 						"column": 9
 					}
 				},
@@ -3535,7 +3540,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 605,
+						"line": 629,
 						"column": 9
 					}
 				},
@@ -3754,7 +3759,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 393,
+						"line": 417,
 						"column": 9
 					}
 				}
@@ -4197,6 +4202,118 @@ window.__ModuleLoader__.load({
 			".pcConnectionBoundary{margin:18px 0;padding:12px 14px;border:1px solid var(--dsw-alias-state-warn-primary);border-left:4px solid var(--dsw-alias-state-warn-primary);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}.pcConnectionBoundary p{margin:4px 0 0;color:var(--dsw-alias-label-secondary)}.pcConnectionPreview,.pcConnectionVerified{margin-top:12px;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-base)}.pcConnectionPreview dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:5px 10px;margin:0 0 12px}.pcConnectionPreview dt{color:var(--dsw-alias-label-tertiary)}.pcConnectionPreview dd{margin:0;overflow-wrap:anywhere}.pcConnectionVerified{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--dsw-alias-label-secondary)}.pcConnectionProfile{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px}.pcConnectionProfileMain{display:flex;min-width:0;flex-direction:column}.pcConnectionProfileMain>span{overflow-wrap:anywhere;color:var(--dsw-alias-label-tertiary);font-size:12px}.pcConnectionActions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}.pcConnectionNotice,.pcConnectionError{margin:12px 0;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px}.pcConnectionError{color:var(--dsw-alias-state-error-primary)}.pcConnectionError details{margin-top:8px}.pcConnectionError pre{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.pcConnectionFootnote{font-size:12px}",
 			"@media(max-width:620px){.pcConnectionHeader,.pcConnectionProfile{align-items:stretch;flex-direction:column}.pcConnectionActions{justify-content:flex-start}.pcConnectionSettings{padding:18px 14px}.pcConnectionPreview dl{grid-template-columns:82px minmax(0,1fr)}}"
 		].join("");
+		// packages/perse-remote-dev/src/client/pc-ui/model-seat.ts
+		/**
+		* Remote model seat: the plugin's composer contribution for remote Sessions (specs/005).
+		* It renders the VERIFIED HOST's own `model.list` catalog for the selected external Session
+		* and renders nothing for local Sessions, so exactly one model control is visible in every
+		* state. It mounts on the list-kind composer seam (`conversation.input.right`): the named
+		* `conversation.input.model` seat is `kind: 'single'`, and any second registration there
+		* either throws (same priority) or shadows the core seat for every Session — which would
+		* remove the local catalog seat from local Sessions. Selections go to the host
+		* (`session.setModel`, or the create-time model path in the backend); no local catalog or
+		* local `selectModel` is ever read or dispatched for a remote Session.
+		*/
+		const PC_MODEL_LOCALE = "perse.remote.model";
+		const pcModelLocale = {
+			zh: {
+				seatLabel: "远程模型",
+				loading: "正在读取远程主机模型…",
+				loadFailed: "远程模型列表读取失败：{reason}",
+				unavailable: "该连接未宣告模型切换能力",
+				defaultSuffix: "（默认）",
+				notSelectable: "不可选",
+				selectPlaceholder: "选择远程模型"
+			},
+			en: {
+				seatLabel: "Remote model",
+				loading: "Loading remote host models…",
+				loadFailed: "Could not load the remote model list: {reason}",
+				unavailable: "This connection does not advertise model selection",
+				defaultSuffix: " (default)",
+				notSelectable: "not selectable",
+				selectPlaceholder: "Select a remote model"
+			}
+		};
+		function interpolate(template, params) {
+			let value = template;
+			for (const [name, item] of Object.entries(params ?? {})) value = value.replace(`{${name}}`, String(item));
+			return value;
+		}
+		/** The composer seat for remote Sessions. Local Sessions and non-external rows render nothing. */
+		function PcRemoteModelSeat(props) {
+			const [host] = react.useState(() => props.lookup());
+			const t = props.t;
+			const [state, setState] = react.useState({ status: "loading" });
+			const [selectedId, setSelectedId] = react.useState(null);
+			const [switchError, setSwitchError] = react.useState(null);
+			react.useEffect(() => {
+				if (host === void 0 || !host.backend.modelSelectionAvailable()) return void 0;
+				let live = true;
+				host.backend.listModels({ fresh: true }).then((list) => {
+					if (live) setState({
+						status: "ready",
+						list
+					});
+				}, (error) => {
+					if (live) setState({
+						status: "error",
+						reason: error instanceof Error ? error.message : String(error)
+					});
+				});
+				return () => {
+					live = false;
+				};
+			}, [host]);
+			if (host === void 0) return null;
+			if (!host.backend.modelSelectionAvailable()) return react.createElement("span", {
+				title: t("seatLabel"),
+				"data-perse-model-seat": "unavailable"
+			}, t("unavailable"));
+			if (state.status === "loading") return react.createElement("span", { "data-perse-model-seat": "loading" }, t("loading"));
+			if (state.status === "error") return react.createElement("span", { "data-perse-model-seat": "error" }, interpolate(t("loadFailed"), { reason: state.reason }));
+			const current = selectedId ?? (() => {
+				const selection = host.backend.currentSelectionOf(host.remoteSessionId);
+				if (selection === null) return null;
+				return state.list.models.find((model) => model.id === `${selection.provider}/${selection.model}`)?.id ?? null;
+			})();
+			const groups = /* @__PURE__ */ new Map();
+			for (const model of state.list.models) {
+				const group = groups.get(model.provider);
+				if (group === void 0) groups.set(model.provider, {
+					name: model.providerName,
+					models: [model]
+				});
+				else group.models.push(model);
+			}
+			return react.createElement("label", { "data-perse-model-seat": "remote" }, react.createElement("span", { hidden: true }, t("seatLabel")), react.createElement("select", {
+				"aria-label": t("seatLabel"),
+				value: current ?? "",
+				onChange: (event) => {
+					const id = event.target.value;
+					const model = state.status === "ready" ? state.list.models.find((entry) => entry.id === id) : void 0;
+					if (model === void 0 || !model.selectable) return;
+					setSwitchError(null);
+					setSelectedId(model.id);
+					host.backend.setModel(host.remoteSessionId, model.id).then((selection) => {
+						setSelectedId(`${selection.provider}/${selection.model}`);
+					}, (error) => {
+						setSelectedId(null);
+						setSwitchError(error instanceof Error ? error.message : String(error));
+					});
+				}
+			}, react.createElement("option", { value: "" }, t("selectPlaceholder")), [...groups.entries()].map(([provider, group]) => react.createElement("optgroup", {
+				key: provider,
+				label: group.name
+			}, group.models.map((model) => react.createElement("option", {
+				key: model.id,
+				value: model.selectable ? model.id : "",
+				disabled: !model.selectable
+			}, `${model.name}${model.isDefault ? t("defaultSuffix") : ""}${model.selectable ? "" : ` — ${t("notSelectable")}`}${model.reasoningEfforts?.length ? ` · ${model.reasoningEfforts.length}` : ""}`))))), state.list.failures.map((failure) => react.createElement("span", {
+				key: failure.provider,
+				"data-perse-model-failure": failure.provider
+			}, interpolate(t("loadFailed"), { reason: failure.reason }))), switchError === null ? null : react.createElement("span", { "data-perse-model-seat": "switch-error" }, interpolate(t("loadFailed"), { reason: switchError })));
+		}
 		// packages/perse-remote-dev/src/client/pc-ui/index.ts
 		const PC_CONNECTION_LOCALE = "perse.remote.connection";
 		const pcConnectionLocale = {
@@ -4347,7 +4464,7 @@ window.__ModuleLoader__.load({
 				legacyNoSource: "No legacy settings file was found under the native profile directory."
 			}
 		};
-		const h = react.createElement;
+		const h$1 = react.createElement;
 		const css = {
 			settings: "pcConnectionSettings",
 			header: "pcConnectionHeader",
@@ -4408,54 +4525,54 @@ window.__ModuleLoader__.load({
 			const activeProfileId = snapshot.connection.profileId;
 			const hostInfo = snapshot.connection.hostInfo;
 			const confirmedHostName = hostInfo !== null && "hostName" in hostInfo && typeof hostInfo.hostName === "string" ? hostInfo.hostName : hostInfo !== null && "name" in hostInfo && typeof hostInfo.name === "string" ? hostInfo.name : "";
-			const button = (label, onClick, variant = "outline", disabled = false) => h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			const button = (label, onClick, variant = "outline", disabled = false) => h$1(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant,
 				size: "sm",
 				onClick,
 				disabled
 			}, label);
-			return h("main", {
+			return h$1("main", {
 				className: css.settings,
 				"data-pc-connection-settings": "1"
-			}, h("style", { "data-pc-connection-styles": "1" }, PC_CONNECTION_CSS), h("header", { className: css.header }, h("div", null, h("h1", null, t("title")), h("p", { className: css.muted }, t("intro"))), h("div", {
+			}, h$1("style", { "data-pc-connection-styles": "1" }, PC_CONNECTION_CSS), h$1("header", { className: css.header }, h$1("div", null, h$1("h1", null, t("title")), h$1("p", { className: css.muted }, t("intro"))), h$1("div", {
 				className: css.status,
 				"data-state": connected ? "connected" : snapshot.connection.status
-			}, h("span", {
+			}, h$1("span", {
 				className: css.statusDot,
 				"aria-hidden": true
-			}), h("span", null, statusLabel(snapshot.connection.status, t)))), snapshot.nativeSessionSupport === "unavailable" ? h("aside", {
+			}), h$1("span", null, statusLabel(snapshot.connection.status, t)))), snapshot.nativeSessionSupport === "unavailable" ? h$1("aside", {
 				className: css.boundary,
 				role: "note",
 				"data-pc-native-session-support": snapshot.nativeSessionSupport
-			}, h("strong", null, t("upgradeTitle")), h("p", null, t("upgradeBody"))) : null, message ? h("div", {
+			}, h$1("strong", null, t("upgradeTitle")), h$1("p", null, t("upgradeBody"))) : null, message ? h$1("div", {
 				className: css.notice,
 				role: "status"
-			}, message) : null, snapshot.pendingCreations.length > 0 ? h("div", {
+			}, message) : null, snapshot.pendingCreations.length > 0 ? h$1("div", {
 				className: css.notice,
 				role: "alert",
 				"data-pc-creation-uncertain": snapshot.pendingCreations.length
-			}, h("strong", null, format(t("uncertainTitle"), { count: snapshot.pendingCreations.length })), h("p", null, t("uncertainBody")), h("ul", null, ...snapshot.pendingCreations.map((item) => h("li", { key: item.operationId }, h("span", null, item.startedAt === 0 ? t("unknownReceipt") : format(t("receiptDetail"), {
+			}, h$1("strong", null, format(t("uncertainTitle"), { count: snapshot.pendingCreations.length })), h$1("p", null, t("uncertainBody")), h$1("ul", null, ...snapshot.pendingCreations.map((item) => h$1("li", { key: item.operationId }, h$1("span", null, item.startedAt === 0 ? t("unknownReceipt") : format(t("receiptDetail"), {
 				hostId: item.hostId,
 				workspaceId: item.workspaceId,
 				time: new Date(item.startedAt).toLocaleString()
-			})), item.startedAt === 0 ? null : h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			})), item.startedAt === 0 ? null : h$1(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "outline",
 				size: "sm",
 				onClick: () => controller.acknowledgeCreationReceipt(item.operationId)
-			}, t("ackReceipt")))))) : null, failure ? h("div", {
+			}, t("ackReceipt")))))) : null, failure ? h$1("div", {
 				className: css.error,
 				role: "alert"
-			}, failure, snapshot.connection.error?.details === void 0 ? null : h("details", null, h("summary", null, t("diagnostics")), h("pre", null, String(snapshot.connection.error.details)))) : null, connected ? h("div", {
+			}, failure, snapshot.connection.error?.details === void 0 ? null : h$1("details", null, h$1("summary", null, t("diagnostics")), h$1("pre", null, String(snapshot.connection.error.details)))) : null, connected ? h$1("div", {
 				className: css.verified,
 				"data-pc-verified-host": snapshot.connection.hostId ?? ""
-			}, h("strong", null, confirmedHostName || t("verifiedHost")), h("details", null, h("summary", null, t("connectionDetails")), h("dl", null, h("dt", null, t("hostId")), h("dd", null, snapshot.connection.hostId), h("dt", null, t("generation")), h("dd", null, snapshot.connection.generation)))) : null, h("section", { className: css.section }, h("h2", null, t("addHost")), h("p", { className: css.muted }, t("pairingIntro")), h("label", { className: css.field }, h("span", null, t("pairLink")), h("textarea", {
+			}, h$1("strong", null, confirmedHostName || t("verifiedHost")), h$1("details", null, h$1("summary", null, t("connectionDetails")), h$1("dl", null, h$1("dt", null, t("hostId")), h$1("dd", null, snapshot.connection.hostId), h$1("dt", null, t("generation")), h$1("dd", null, snapshot.connection.generation)))) : null, h$1("section", { className: css.section }, h$1("h2", null, t("addHost")), h$1("p", { className: css.muted }, t("pairingIntro")), h$1("label", { className: css.field }, h$1("span", null, t("pairLink")), h$1("textarea", {
 				value: pairLink,
 				rows: 4,
 				autoComplete: "off",
 				spellCheck: false,
 				placeholder: t("pairPlaceholder"),
 				onChange: (event) => setPairLink(event.currentTarget.value)
-			})), h("label", { className: css.field }, h("span", null, t("deviceName")), h(_deepseek_ai_dsh_client_ui_primitives.Input, {
+			})), h$1("label", { className: css.field }, h$1("span", null, t("deviceName")), h$1(_deepseek_ai_dsh_client_ui_primitives.Input, {
 				value: deviceName,
 				maxLength: 100,
 				placeholder: t("thisDevice"),
@@ -4464,40 +4581,22 @@ window.__ModuleLoader__.load({
 				const outcome = await controller.previewPairing(pairLink);
 				if (outcome.ok) setPairLink("");
 				return outcome;
-			}, t("previewCreated")), "primary", busy || pairLink.trim() === ""), preview === null ? null : h("div", {
+			}, t("previewCreated")), "primary", busy || pairLink.trim() === ""), preview === null ? null : h$1("div", {
 				className: css.preview,
 				"data-pc-pair-preview": "1"
-			}, h("h3", null, t("verifyHost")), h("dl", null, h("dt", null, t("previewHost")), h("dd", null, preview.hostName), h("dt", null, t("previewId")), h("dd", null, preview.hostId), h("dt", null, t("address")), h("dd", null, preview.endpoint), h("dt", null, t("networkMode")), h("dd", null, preview.networkMode), h("dt", null, t("permissionSummary")), h("dd", null, preview.accessSummary), h("dt", null, t("expires")), h("dd", null, new Date(preview.expiresAt).toLocaleString())), button(t("confirmPairing"), () => void run(() => controller.confirmPairing(preview.confirmationId, deviceName || t("thisDevice")), t("verifiedNotice")), "primary", busy))), h("section", { className: css.section }, h("div", { className: css.sectionHeading }, h("h2", null, t("savedHosts")), button(t("refresh"), () => void run(() => controller.refreshProfiles(), t("refreshed")), "outline", busy)), snapshot.profiles.length === 0 ? h("p", { className: css.muted }, t("emptyProfiles")) : null, ...snapshot.profiles.map((profile) => {
+			}, h$1("h3", null, t("verifyHost")), h$1("dl", null, h$1("dt", null, t("previewHost")), h$1("dd", null, preview.hostName), h$1("dt", null, t("previewId")), h$1("dd", null, preview.hostId), h$1("dt", null, t("address")), h$1("dd", null, preview.endpoint), h$1("dt", null, t("networkMode")), h$1("dd", null, preview.networkMode), h$1("dt", null, t("permissionSummary")), h$1("dd", null, preview.accessSummary), h$1("dt", null, t("expires")), h$1("dd", null, new Date(preview.expiresAt).toLocaleString())), button(t("confirmPairing"), () => void run(() => controller.confirmPairing(preview.confirmationId, deviceName || t("thisDevice")), t("verifiedNotice")), "primary", busy))), h$1("section", { className: css.section }, h$1("div", { className: css.sectionHeading }, h$1("h2", null, t("savedHosts")), button(t("refresh"), () => void run(() => controller.refreshProfiles(), t("refreshed")), "outline", busy)), snapshot.profiles.length === 0 ? h$1("p", { className: css.muted }, t("emptyProfiles")) : null, ...snapshot.profiles.map((profile) => {
 				const isVerifiedActive = connected && profile.profileId === activeProfileId;
 				const profileStatus = profile.status === "offline" ? t("offline") : profile.status === "revoked" ? t("revoked") : t("saved");
-				return h("article", {
+				return h$1("article", {
 					className: css.profile,
 					key: profile.profileId,
 					"data-pc-profile": profile.profileId
-				}, h("div", { className: css.profileMain }, h("strong", null, profile.hostName || t("remoteHost")), h("span", null, profile.endpoint), h("span", null, `${isVerifiedActive ? t("checkedHost") : profileStatus} · ${profile.networkMode}`)), h("div", { className: css.actions }, button(isVerifiedActive ? t("disconnect") : t("connect"), () => void run(() => isVerifiedActive ? controller.disconnectProfile(profile.profileId) : controller.connectProfile(profile.profileId), isVerifiedActive ? t("disconnectedNotice") : t("verifiedNotice")), isVerifiedActive ? "outline" : "primary", busy), button(t("revoke"), () => {
+				}, h$1("div", { className: css.profileMain }, h$1("strong", null, profile.hostName || t("remoteHost")), h$1("span", null, profile.endpoint), h$1("span", null, `${isVerifiedActive ? t("checkedHost") : profileStatus} · ${profile.networkMode}`)), h$1("div", { className: css.actions }, button(isVerifiedActive ? t("disconnect") : t("connect"), () => void run(() => isVerifiedActive ? controller.disconnectProfile(profile.profileId) : controller.connectProfile(profile.profileId), isVerifiedActive ? t("disconnectedNotice") : t("verifiedNotice")), isVerifiedActive ? "outline" : "primary", busy), button(t("revoke"), () => {
 					if (typeof window !== "undefined" && window.confirm(t("revokeConfirm"))) run(() => controller.revokeSelf(profile.profileId), t("revokedNotice"));
 				}, "outline", busy || !isVerifiedActive), button(t("forget"), () => {
 					if (typeof window !== "undefined" && window.confirm(t("forgetConfirm"))) run(() => controller.forgetProfile(profile.profileId), t("forgotNotice"));
 				}, "outline", busy)));
-			})), connected ? h("p", { className: css.footnote }, t("footnote")) : null);
-		}
-		function PcPanelIcon(props) {
-			const size = props.size ?? 18;
-			return h("svg", {
-				width: size,
-				height: size,
-				viewBox: "0 0 24 24",
-				fill: "none",
-				stroke: "currentColor",
-				strokeWidth: 1.7,
-				"aria-hidden": true
-			}, h("rect", {
-				x: 4,
-				y: 5,
-				width: 16,
-				height: 14,
-				rx: 2
-			}), h("path", { d: "M8 9h8M8 13h5M8 17h8" }));
+			})), connected ? h$1("p", { className: css.footnote }, t("footnote")) : null);
 		}
 		function LegacyConfigSettings(props) {
 			const { remote, t } = props;
@@ -5115,6 +5214,96 @@ window.__ModuleLoader__.load({
 			if (code === 43) return 62;
 			if (code === 47) return 63;
 			return -1;
+		}
+		const MAX_REMOTE_MODELS = 256;
+		const MAX_REMOTE_MODEL_ID_CHARS = 512;
+		const MAX_REMOTE_MODEL_NAME_CHARS = 200;
+		const MAX_REMOTE_MODEL_FAILURES = 16;
+		/** Boundary decoder for the v1.3 model.list payload; rejects any host data outside the contract. */
+		function decodePcModelList(resultJson) {
+			const parsed = parseResult(resultJson);
+			if (!parsed.ok) return failure({
+				code: "invalid-model-list",
+				message: "The remote model list response was not a valid JSON object."
+			});
+			const rows = parsed.value.models;
+			if (!Array.isArray(rows)) return failure({
+				code: "invalid-model-list",
+				message: "The remote host returned an invalid model list."
+			});
+			if (rows.length > MAX_REMOTE_MODELS) return failure({
+				code: "invalid-model-list",
+				message: "The remote model list exceeded the protocol model cap.",
+				limit: MAX_REMOTE_MODELS
+			});
+			const models = [];
+			const ids = /* @__PURE__ */ new Set();
+			for (const row of rows) {
+				const value = asRecord$1(row);
+				if (value === null || !nonEmpty(value.id) || value.id.length > MAX_REMOTE_MODEL_ID_CHARS || !value.id.includes("/") || !nonEmpty(value.provider) || value.provider.length > MAX_REMOTE_MODEL_NAME_CHARS || !nonEmpty(value.providerName) || value.providerName.length > MAX_REMOTE_MODEL_NAME_CHARS || !nonEmpty(value.name) || value.name.length > MAX_REMOTE_MODEL_NAME_CHARS || typeof value.isDefault !== "boolean" || typeof value.selectable !== "boolean" || value.reasoningEfforts !== void 0 && (!Array.isArray(value.reasoningEfforts) || !value.reasoningEfforts.every((effort) => typeof effort === "string" && effort.length > 0 && effort.length <= MAX_REMOTE_MODEL_NAME_CHARS)) || ids.has(value.id)) return failure({
+					code: "invalid-model-list",
+					message: "The remote host returned an invalid or duplicate model row."
+				});
+				ids.add(value.id);
+				models.push({
+					id: value.id,
+					provider: value.provider,
+					providerName: value.providerName,
+					name: value.name,
+					isDefault: value.isDefault,
+					selectable: value.selectable,
+					...Array.isArray(value.reasoningEfforts) ? { reasoningEfforts: value.reasoningEfforts } : {}
+				});
+			}
+			if (models.filter((model) => model.isDefault).length > 1) return failure({
+				code: "invalid-model-list",
+				message: "The remote model list advertised more than one default model."
+			});
+			const rawDefault = parsed.value.default;
+			let defaultValue = null;
+			if (rawDefault !== null) {
+				const record = asRecord$1(rawDefault);
+				if (record === null || !nonEmpty(record.provider) || !nonEmpty(record.model) || record.reasoningEffort !== void 0 && (typeof record.reasoningEffort !== "string" || !record.reasoningEffort)) return failure({
+					code: "invalid-model-list",
+					message: "The remote model list carried an invalid default selection."
+				});
+				defaultValue = {
+					provider: record.provider,
+					model: record.model,
+					...typeof record.reasoningEffort === "string" ? { reasoningEffort: record.reasoningEffort } : {}
+				};
+			}
+			const rawFailures = parsed.value.failures;
+			if (!Array.isArray(rawFailures) || rawFailures.length > MAX_REMOTE_MODEL_FAILURES) return failure({
+				code: "invalid-model-list",
+				message: "The remote model list carried an invalid provider failure list.",
+				limit: MAX_REMOTE_MODEL_FAILURES
+			});
+			const failuresList = [];
+			for (const row of rawFailures) {
+				const value = asRecord$1(row);
+				if (value === null || !nonEmpty(value.provider) || !nonEmpty(value.reason)) return failure({
+					code: "invalid-model-list",
+					message: "The remote model list carried an invalid provider failure row."
+				});
+				failuresList.push({
+					provider: value.provider,
+					reason: value.reason
+				});
+			}
+			if (typeof parsed.value.truncated !== "boolean") return failure({
+				code: "invalid-model-list",
+				message: "The remote model list did not state truncation."
+			});
+			return {
+				ok: true,
+				value: {
+					models,
+					default: defaultValue,
+					failures: failuresList,
+					truncated: parsed.value.truncated
+				}
+			};
 		}
 		function statusFor(sourceType, payload) {
 			if (sourceType === "turn/start") return "running";
@@ -6134,6 +6323,8 @@ window.__ModuleLoader__.load({
 			profileName;
 			generation;
 			capabilities;
+			/** v1.3 host model advertisement (host.info capabilities `modelList`/`modelSelect`); never assumed. */
+			modelSupport;
 			catalog;
 			remote;
 			hostInfo;
@@ -6141,6 +6332,8 @@ window.__ModuleLoader__.load({
 			onOffline;
 			onCreationReceiptChange;
 			blankSessions = /* @__PURE__ */ new Set();
+			defaultModelByWorkspace = /* @__PURE__ */ new Map();
+			modelListFlight;
 			faces = /* @__PURE__ */ new Map();
 			disposed = false;
 			refreshFlight;
@@ -6156,6 +6349,7 @@ window.__ModuleLoader__.load({
 				this.onOffline = options.onOffline;
 				this.onCreationReceiptChange = options.onCreationReceiptChange ?? (() => void 0);
 				this.capabilities = capabilitiesOf(options.hostInfo);
+				this.modelSupport = modelSupportOf(options.hostInfo);
 				this.catalog = new Snapshot(this.catalogValue("connected", []));
 			}
 			refresh() {
@@ -6233,6 +6427,12 @@ window.__ModuleLoader__.load({
 					method: "session.create",
 					capability: "providers"
 				});
+				const requestedModel = request.options.model ?? this.defaultModelByWorkspace.get(request.address.workspaceId);
+				if (requestedModel !== void 0 && !this.modelSelectionAvailable()) throw makePcRemoteError("remote-dev/pc-native-capability-unavailable", "The verified host does not advertise model selection, so the requested model was not sent and no local model was substituted.", {
+					method: "session.create(model)",
+					capability: "modelSelection",
+					model: requestedModel
+				});
 				const operationId = createOperationId();
 				const creationReceipt = {
 					kind: "create",
@@ -6254,7 +6454,7 @@ window.__ModuleLoader__.load({
 					const decoded = decodePcSessionCreate(await this.call("session.create", {
 						workspaceId: request.address.workspaceId,
 						provider,
-						...request.options.model === void 0 ? {} : { model: request.options.model }
+						...requestedModel === void 0 ? {} : { model: requestedModel }
 					}, request.signal), request.address.workspaceId);
 					if (!decoded.ok) throw invalidCatalog("session.create", decoded.error.message);
 					pcSubmissionReceipts.clearCreation(operationId);
@@ -6268,6 +6468,85 @@ window.__ModuleLoader__.load({
 					this.updateCreationWarning();
 					this.onCreationReceiptChange();
 				}
+			}
+			/** The 1.3 seat surface may render only when the verified host advertises both wire capabilities. */
+			modelSelectionAvailable() {
+				return this.modelSupport.list && this.modelSupport.select;
+			}
+			/** Read the verified host's own model catalog. Never guesses, never falls back to local models. */
+			async listModels(options = {}) {
+				this.assertCurrent("model.list");
+				if (!this.modelSupport.list) throw modelCapabilityUnavailable("model.list");
+				if (!options.fresh && this.modelListFlight !== void 0) return this.modelListFlight;
+				const flight = (async () => {
+					const decoded = decodePcModelList(await this.call("model.list", {}));
+					if (!decoded.ok) throw invalidCatalog("model.list", `catalog payload was invalid (${decoded.error.code}): ${decoded.error.message}`);
+					return decoded.value;
+				})();
+				this.modelListFlight = flight;
+				flight.catch(() => {
+					if (this.modelListFlight === flight) this.modelListFlight = void 0;
+				});
+				return flight;
+			}
+			/**
+			* Select the model for one existing remote Session on the owning host. One dispatch only:
+			* an unknown transport outcome is never auto-retried (the caller re-reads state instead).
+			*/
+			async setModel(sessionId, model, reasoningEffort) {
+				this.assertCurrent("session.setModel");
+				if (!this.modelSelectionAvailable()) throw modelCapabilityUnavailable("session.setModel");
+				const resultJson = await this.call("session.setModel", {
+					sessionId,
+					model,
+					...reasoningEffort === void 0 ? {} : { reasoningEffort }
+				});
+				let parsed;
+				try {
+					parsed = JSON.parse(resultJson);
+				} catch {
+					throw invalidCatalog("session.setModel", "response was not valid JSON");
+				}
+				const record = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed : null;
+				const selection = record !== null && typeof record.model === "object" && record.model !== null && !Array.isArray(record.model) ? record.model : null;
+				if (selection === null || typeof selection.provider !== "string" || !selection.provider || typeof selection.model !== "string" || !selection.model) throw invalidCatalog("session.setModel", "response did not contain the accepted selection");
+				return {
+					provider: selection.provider,
+					model: selection.model,
+					...typeof selection.reasoningEffort === "string" ? { reasoningEffort: selection.reasoningEffort } : {}
+				};
+			}
+			/**
+			* Store the workspace's chosen remote model for future remote Session creates. The model
+			* must appear in the verified host's own catalog; unsupported hosts fail explicitly.
+			*/
+			async setDefaultModel(workspaceId, model) {
+				this.assertCurrent("session.setModel");
+				if (model === null) {
+					this.defaultModelByWorkspace.delete(workspaceId);
+					return;
+				}
+				const match = (await this.listModels()).models.find((entry) => entry.id === model);
+				if (match === void 0 || !match.selectable) throw makePcRemoteError("remote-dev/pc-native-capability-unavailable", `Model ${model} is not selectable on the verified host; nothing was stored and no local model was substituted.`, {
+					method: "session.create(model)",
+					capability: "modelSelection",
+					model
+				});
+				this.defaultModelByWorkspace.set(workspaceId, model);
+			}
+			getDefaultModel(workspaceId) {
+				return this.defaultModelByWorkspace.get(workspaceId);
+			}
+			/** Durable host model selection projected for an open remote Session, for the remote model seat. */
+			currentSelectionOf(remoteSessionId) {
+				const face = this.faces.get(remoteSessionId);
+				if (face === void 0) return null;
+				const selection = face.projections.faceOf("modelSelection").getSnapshot()?.next;
+				if (selection === null || selection === void 0 || typeof selection.provider !== "string" || typeof selection.model !== "string") return null;
+				return {
+					provider: selection.provider,
+					model: selection.model
+				};
 			}
 			openSession(request) {
 				if (this.disposed || !this.isCurrent() || request.generation !== this.generation || request.address.backendId !== this.backendId || request.address.hostId !== this.hostId) throw staleBackend(this.backendId, this.generation);
@@ -6397,6 +6676,19 @@ window.__ModuleLoader__.load({
 			const selected = providers.find((provider) => provider.available === true && typeof provider.id === "string" && provider.id === "dsh") ?? providers.find((provider) => provider.available === true && typeof provider.id === "string");
 			return typeof selected?.id === "string" ? selected.id : void 0;
 		}
+		function modelSupportOf(hostInfo) {
+			const methods = new Set(Array.isArray(hostInfo.capabilities) ? hostInfo.capabilities.filter((item) => typeof item === "string") : []);
+			return {
+				list: methods.has("modelList"),
+				select: methods.has("modelSelect")
+			};
+		}
+		function modelCapabilityUnavailable(method) {
+			return makePcRemoteError("remote-dev/pc-native-capability-unavailable", "The verified host does not advertise model selection, so the model request was not sent and no local model was substituted.", {
+				method,
+				capability: "modelSelection"
+			});
+		}
 		function invalidCatalog(method, reason) {
 			return makePcRemoteError("remote-dev/pc-native-session-invalid", `Remote ${method} did not return a valid catalog.`, {
 				sessionId: method,
@@ -6444,6 +6736,11 @@ window.__ModuleLoader__.load({
 			return typeof observable.getSnapshot === "function" && typeof observable.subscribe === "function";
 		}
 		// packages/perse-remote-dev/src/client/native-sessions/integration.ts
+		const LOG$1 = "[perse-remote-dev]";
+		const RECONNECT_FIRST_DELAY_MS = 2e3;
+		const RECONNECT_MAX_DELAY_MS = 3e4;
+		const RECONNECT_PROFILE_POLL_MS = 1e4;
+		const RECONNECT_PROFILE_POLL_HIDDEN_MS = 3e4;
 		/** Connects the settings controller to DSH's optional native external-session registry. */
 		var PcNativeSessionIntegration = class {
 			sessions;
@@ -6452,9 +6749,104 @@ window.__ModuleLoader__.load({
 			backend;
 			unregister;
 			activeProfileId;
-			attemptedRecovery = /* @__PURE__ */ new Set();
+			/**
+			* The connection this process had verified and installed. Its disappearance is the
+			* transport-loss trigger; an explicit user action is not.
+			*/
+			liveConnection;
+			reconnectTimers = /* @__PURE__ */ new Map();
+			/**
+			* The last generation whose row this page saw reported `connected` by the host, per
+			* profile. Only a transition away from it counts as a host-reported loss, which is why
+			* it is not cleared when a backoff stops: the healthy snapshot that stops the backoff is
+			* the same observation the next loss is measured against. Bounded by the profile count.
+			*/
+			rowSaidConnected = /* @__PURE__ */ new Map();
+			/** Set only when a real document exists; the visibility rule is browser-side by nature. */
+			pollTimer;
+			visibilityDocument;
+			onVisibilityChange = () => {
+				this.attemptPendingReconnects();
+			};
+			reconnecting = /* @__PURE__ */ new Set();
+			reconnectFailures = /* @__PURE__ */ new Map();
 			disposed = false;
 			stopController;
+			navListeners = /* @__PURE__ */ new Set();
+			navCatalogStop;
+			navBoundBackend;
+			navCatalogError;
+			/** Host rows for the plugin's own remote navigation group. */
+			getBackends() {
+				const backend = this.backend;
+				if (backend === void 0) return [];
+				const catalog = backend.catalog.getSnapshot();
+				return [{
+					backendId: backend.backendId,
+					hostId: backend.hostId,
+					hostName: backend.hostName,
+					profileName: backend.profileName,
+					status: catalog.status === "connected" ? "connected" : "offline",
+					warning: catalog.warning,
+					catalogError: this.navCatalogError,
+					workspaces: catalog.workspaces
+				}];
+			}
+			/**
+			* The stored profile whose installed generation currently owns native
+			* sessions, if any. Exactly one backend is installed at a time — `install()`
+			* unregisters the previous one — so at most one host is active for
+			* sessions, even though `bridge.ts` can hold verified sockets for several
+			* profiles concurrently (its `connections` map is keyed by profileId and a
+			* connect only replaces that profile's own previous socket).
+			*/
+			getActiveProfileId() {
+				return this.backend === void 0 ? void 0 : this.activeProfileId;
+			}
+			/**
+			* Resolve the remote model seat host (specs/005) for a client Session id: defined only
+			* for Sessions owned by the current backend generation; local Sessions get undefined.
+			*/
+			seatHostFor(clientSessionId) {
+				const backend = this.backend;
+				if (backend === void 0) return void 0;
+				const registry = this.sessions;
+				if (typeof registry?.externalIdentityOf !== "function") return void 0;
+				let identity;
+				try {
+					identity = registry.externalIdentityOf(clientSessionId);
+				} catch {
+					return;
+				}
+				if (identity === void 0) return void 0;
+				if (String(identity.backendId) !== String(backend.backendId) || String(identity.generation) !== String(backend.generation)) return void 0;
+				return {
+					backend,
+					remoteSessionId: String(identity.address.sessionId)
+				};
+			}
+			/** Subscribe to backend install/retire and catalog changes; the group renders from this alone. */
+			subscribeBackends(listener) {
+				this.navListeners.add(listener);
+				this.bindNavCatalog();
+				return () => {
+					this.navListeners.delete(listener);
+					this.bindNavCatalog();
+				};
+			}
+			notifyNav = () => {
+				for (const listener of [...this.navListeners]) listener();
+			};
+			bindNavCatalog() {
+				const target = this.disposed || this.navListeners.size === 0 ? void 0 : this.backend;
+				if (target === this.navBoundBackend) return;
+				this.navCatalogStop?.();
+				this.navCatalogStop = void 0;
+				this.navBoundBackend = void 0;
+				if (target === void 0) return;
+				this.navCatalogStop = target.catalog.subscribe(this.notifyNav);
+				this.navBoundBackend = target;
+			}
 			constructor(options) {
 				const supported = hasExternalSessionsApi(options.sessions);
 				this.sessions = supported ? options.sessions : void 0;
@@ -6464,32 +6856,210 @@ window.__ModuleLoader__.load({
 				this.refreshPendingCreationWarning();
 				this.controller.setCreationReceiptAcknowledger((operationId) => this.acknowledgeCreation(operationId));
 				this.stopController = this.controller.subscribe(() => this.sync(this.controller.getSnapshot()));
-				if (supported) this.restoreConnectedProfiles();
+				if (supported) {
+					this.restoreConnectedProfiles();
+					this.attachVisibilityHook();
+					this.scheduleProfilePoll(RECONNECT_PROFILE_POLL_MS);
+				}
+			}
+			/**
+			* Browsers throttle and eventually freeze timers in a hidden tab, so a retry that is
+			* merely waiting on a backoff timer can be arbitrarily late — which is exactly the
+			* state an operator sees after leaving the page in the background overnight. The page
+			* becoming visible again is the honest moment to run what was waiting.
+			*/
+			attachVisibilityHook() {
+				const doc = globalThis.document;
+				if (typeof doc?.addEventListener !== "function") return;
+				doc.addEventListener("visibilitychange", this.onVisibilityChange);
+				this.visibilityDocument = doc;
+			}
+			/** Runs every pending backoff attempt now; see the contract's hidden-page rule. */
+			attemptPendingReconnects() {
+				if (!this.pageVisible()) return;
+				for (const [profileId, timer] of [...this.reconnectTimers]) {
+					clearTimeout(timer);
+					this.reconnectTimers.delete(profileId);
+					this.attemptReconnect(profileId);
+				}
+				this.readProfileRows();
+			}
+			/** No document (node-side harnesses) counts as visible: there is no hidden state to respect. */
+			pageVisible() {
+				const doc = globalThis.document;
+				return doc?.visibilityState === void 0 || doc.visibilityState === "visible";
+			}
+			scheduleProfilePoll(delayMs) {
+				if (this.disposed) return;
+				if (this.pollTimer !== void 0) clearTimeout(this.pollTimer);
+				this.pollTimer = setTimeout(() => {
+					this.pollTimer = void 0;
+					this.readProfileRows();
+				}, delayMs);
+			}
+			/**
+			* The stored rows are the host's own observation of its socket. A page nobody is
+			* interacting with otherwise never learns that the link died, and a host-reported
+			* offline row is one of the two loss triggers (docs/pc-contract.md), so the read is
+			* what makes an idle page recover on its own. It is the same profile-list read the UI
+			* already performs — no extra wire method, no extra credential.
+			*/
+			async readProfileRows() {
+				if (this.disposed) return;
+				this.scheduleProfilePoll(this.pageVisible() ? RECONNECT_PROFILE_POLL_MS : RECONNECT_PROFILE_POLL_HIDDEN_MS);
+				try {
+					await this.controller.refreshProfiles();
+				} catch {}
 			}
 			dispose() {
 				if (this.disposed) return;
 				this.disposed = true;
+				if (typeof this.visibilityDocument?.removeEventListener === "function") this.visibilityDocument.removeEventListener("visibilitychange", this.onVisibilityChange);
+				this.visibilityDocument = void 0;
+				for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
+				this.reconnectTimers.clear();
+				if (this.pollTimer !== void 0) clearTimeout(this.pollTimer);
+				this.pollTimer = void 0;
+				this.reconnectFailures.clear();
+				this.rowSaidConnected.clear();
+				this.reconnecting.clear();
+				this.liveConnection = void 0;
 				this.controller.setCreationReceiptAcknowledger(() => void 0);
 				this.stopController();
 				this.unregister?.();
 				this.unregister = void 0;
 				this.backend?.dispose();
 				this.backend = void 0;
+				this.navCatalogStop?.();
+				this.navCatalogStop = void 0;
+				this.navBoundBackend = void 0;
+				this.navListeners.clear();
 			}
+			/**
+			* Launch-time restore: every reconnect-eligible profile gets one immediate
+			* reverification from the list already read here. A failure keeps the eligibility
+			* and re-enters the same backoff loop that serves a lost live connection, so a
+			* host that is briefly down is not given up on for the rest of the session.
+			*/
 			async restoreConnectedProfiles() {
 				const profiles = await this.controller.refreshProfiles();
-				if (this.disposed || !profiles.ok) return;
-				for (const profile of profiles.value) {
-					if (profile.status !== "connected" || this.attemptedRecovery.has(profile.profileId)) continue;
-					this.attemptedRecovery.add(profile.profileId);
-					if (!(await this.controller.connectProfile(profile.profileId)).ok) continue;
+				if (this.disposed) return;
+				if (!profiles.ok) {
+					console.warn(LOG$1, `PC 配对配置读取失败：${profiles.failure.code} — ${profiles.failure.message}`);
+					return;
 				}
+				for (const profile of profiles.value) {
+					if (profile.autoConnect !== true) continue;
+					if (this.reconnecting.has(profile.profileId)) continue;
+					this.reconnecting.add(profile.profileId);
+					try {
+						await this.dispatchReconnect(profile.profileId);
+					} finally {
+						this.reconnecting.delete(profile.profileId);
+					}
+				}
+			}
+			/**
+			* One pending attempt per profile: however many state changes point at the same lost
+			* connection, only one timer is armed. Scheduling is legal while an attempt is still
+			* in flight — the attempt schedules its own successor — so the timer re-arms instead
+			* of being lost if that attempt has not settled by the time it fires.
+			*/
+			scheduleReconnect(profileId, delayMs) {
+				if (this.disposed) return;
+				if (this.reconnectTimers.has(profileId)) return;
+				const timer = setTimeout(() => {
+					this.reconnectTimers.delete(profileId);
+					if (this.reconnecting.has(profileId)) {
+						this.scheduleReconnect(profileId, RECONNECT_FIRST_DELAY_MS);
+						return;
+					}
+					this.attemptReconnect(profileId);
+				}, delayMs);
+				this.reconnectTimers.set(profileId, timer);
+			}
+			/** After `failures` consecutive failures: about 2s, then 4s, 8s, 16s, capped at 30s. */
+			reconnectDelayMs(failures) {
+				return Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_FIRST_DELAY_MS * 2 ** Math.max(0, failures - 1));
+			}
+			stopReconnect(profileId) {
+				const timer = this.reconnectTimers.get(profileId);
+				if (timer !== void 0) clearTimeout(timer);
+				this.reconnectTimers.delete(profileId);
+				this.reconnectFailures.delete(profileId);
+			}
+			/**
+			* A scheduled attempt re-reads the stored intent before dispatching, so a user
+			* disconnect, a forget/revoke or a removed profile ends the loop without ever
+			* reaching the host.
+			*/
+			async attemptReconnect(profileId) {
+				if (this.disposed || this.reconnecting.has(profileId)) return;
+				this.reconnecting.add(profileId);
+				try {
+					const profiles = await this.controller.refreshProfiles();
+					if (this.disposed) return;
+					if (!profiles.ok) {
+						this.scheduleReconnect(profileId, this.reconnectDelayMs(this.reconnectFailures.get(profileId) ?? 1));
+						return;
+					}
+					const profile = profiles.value.find((item) => item.profileId === profileId);
+					if (profile === void 0 || profile.autoConnect !== true) {
+						this.stopReconnect(profileId);
+						return;
+					}
+					const connection = this.controller.getSnapshot().connection;
+					if (connection.status === "connected" && connection.profileId === profileId && profile.status !== "offline") {
+						this.stopReconnect(profileId);
+						return;
+					}
+					await this.dispatchReconnect(profileId);
+				} finally {
+					this.reconnecting.delete(profileId);
+				}
+			}
+			/**
+			* Reverify only, under the same rule as the launch-time restore: the bridge takes a
+			* fresh generation and validates the host identity, no Session is recreated and no
+			* prompt or mutation is replayed. A success installs through the single-owner
+			* controller subscription below; installing here as well would retire the exact
+			* generation the acceptance just published.
+			*/
+			async dispatchReconnect(profileId) {
+				const result = await this.controller.connectProfile(profileId);
+				if (this.disposed) return;
+				if (result.ok) {
+					this.reconnectFailures.delete(profileId);
+					console.log(LOG$1, `主机自动重连成功：profile=${profileId} generation=${result.value.generation}`);
+					return;
+				}
+				const failures = (this.reconnectFailures.get(profileId) ?? 0) + 1;
+				this.reconnectFailures.set(profileId, failures);
+				console.warn(LOG$1, `主机自动重连失败，继续退避重试：profile=${profileId} attempt=${failures} ${result.failure.code} — ${result.failure.message}`);
+				this.scheduleReconnect(profileId, this.reconnectDelayMs(failures));
 			}
 			sync(snapshot) {
 				if (this.disposed || this.sessions === void 0) return;
 				const connection = snapshot.connection;
+				const installed = this.liveConnection;
+				if (installed !== void 0) {
+					const row = snapshot.profiles.find((item) => item.profileId === installed.profileId);
+					if (row?.status === "offline") {
+						if (this.rowSaidConnected.get(installed.profileId) === installed.generation) {
+							this.liveConnection = void 0;
+							this.scheduleReconnect(installed.profileId, 0);
+							return;
+						}
+					} else if (row?.status === "connected") this.rowSaidConnected.set(installed.profileId, installed.generation);
+				}
 				if (connection.status === "connected" && connection.profileId !== null && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
 					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
+					if (profile?.status === "connected") this.rowSaidConnected.set(connection.profileId, connection.generation);
+					this.liveConnection = {
+						profileId: connection.profileId,
+						generation: connection.generation
+					};
+					this.stopReconnect(connection.profileId);
 					if (profile === void 0) return;
 					if (this.backend?.generation === connection.generation && this.backend.backendId === connection.profileId) return;
 					this.install(profile, {
@@ -6500,6 +7070,14 @@ window.__ModuleLoader__.load({
 					});
 					return;
 				}
+				const lost = this.liveConnection;
+				if (lost !== void 0 && connection.status === "error" && connection.profileId === lost.profileId) {
+					this.liveConnection = void 0;
+					this.scheduleReconnect(lost.profileId, 0);
+				} else if (lost !== void 0 && connection.status === "disconnected" && (connection.profileId === lost.profileId || connection.profileId === null)) {
+					this.liveConnection = void 0;
+					this.stopReconnect(lost.profileId);
+				}
 				if (this.activeProfileId !== void 0) {
 					if (!snapshot.profiles.some((profile) => profile.profileId === this.activeProfileId)) {
 						this.unregister?.();
@@ -6507,6 +7085,8 @@ window.__ModuleLoader__.load({
 						this.backend?.dispose();
 						this.backend = void 0;
 						this.activeProfileId = void 0;
+						this.bindNavCatalog();
+						this.notifyNav();
 					} else this.backend?.setOffline();
 				}
 			}
@@ -6538,8 +7118,19 @@ window.__ModuleLoader__.load({
 				});
 				this.backend = backend;
 				this.activeProfileId = connection.profileId;
+				this.navCatalogError = void 0;
 				this.unregister = this.sessions.registerExternalBackend(backend);
-				backend.refresh().catch(() => void 0);
+				this.bindNavCatalog();
+				this.notifyNav();
+				backend.refresh().then(() => {
+					if (this.disposed || this.backend !== backend || this.navCatalogError === void 0) return;
+					this.navCatalogError = void 0;
+					this.notifyNav();
+				}, (error) => {
+					if (this.disposed || this.backend !== backend) return;
+					this.navCatalogError = error instanceof Error ? error.message : "catalog refresh failed";
+					this.notifyNav();
+				});
 			}
 			refreshPendingCreationWarning() {
 				try {
@@ -6571,6 +7162,450 @@ window.__ModuleLoader__.load({
 				this.refreshPendingCreationWarning();
 			}
 		};
+		// packages/perse-remote-dev/src/client/remote-nav/model.ts
+		/** The header seat hands the row's Session id as a plain string; brand it for the service call. */
+		const asNativeSessionId = (value) => value;
+		/** Runtime detection: an older core has `uiWorkspace` but no external-session navigation. */
+		function navigationApiOf(value) {
+			if (typeof value !== "object" || value === null) return void 0;
+			const service = value;
+			const selection = service.selection;
+			if (typeof service.openExternalSession !== "function" || typeof service.createExternalSession !== "function") return void 0;
+			if (selection === null || typeof selection !== "object" || typeof selection.getSnapshot !== "function" || typeof selection.subscribe !== "function") return void 0;
+			return service;
+		}
+		const EMPTY = {
+			hosts: [],
+			selectedAddress: void 0,
+			nativeSessionsAvailable: false
+		};
+		/** Compare two Host-qualified addresses by value, so an equal re-read is not a re-render. */
+		const sameAddress = (left, right) => left === right || left !== void 0 && right !== void 0 && left.backendId === right.backendId && left.hostId === right.hostId && left.workspaceId === right.workspaceId && left.sessionId === right.sessionId;
+		/**
+		* The decision table from docs/pc-contract.md, in code. The observation is
+		* primary; the intent marker only splits a not-connected observation into
+		* transport loss (reconnectable) versus withdrawn intent. `autoConnect` is the
+		* single allowed intent signal — nothing here reads or reconstructs
+		* `desiredState`, so the view cannot invent intent.
+		*/
+		function remoteHostRowState(profile) {
+			if (profile.status === "connected") return "connected";
+			if (profile.status === "revoked") return "revoked";
+			return profile.autoConnect === true ? "reconnect" : "not-connected";
+		}
+		/** Merge the plugin catalog and the native selection into one stable snapshot. */
+		function createRemoteNavModel(sources) {
+			let snapshot = EMPTY;
+			const listeners = /* @__PURE__ */ new Set();
+			let disposed = false;
+			const buildHosts = () => {
+				const backends = sources.getBackends();
+				const activeProfileId = sources.getActiveProfileId();
+				return sources.getProfiles().map((profile) => {
+					const backend = backends.find((candidate) => String(candidate.backendId) === profile.profileId);
+					return {
+						profileId: profile.profileId,
+						hostName: profile.hostName,
+						deviceName: profile.deviceName,
+						rowState: remoteHostRowState(profile),
+						active: activeProfileId !== void 0 && activeProfileId === profile.profileId,
+						backend
+					};
+				});
+			};
+			const sameHosts = (left, right) => left.length === right.length && left.every((host, index) => {
+				const other = right[index];
+				return other !== void 0 && host.profileId === other.profileId && host.hostName === other.hostName && host.deviceName === other.deviceName && host.rowState === other.rowState && host.active === other.active && host.backend === other.backend;
+			});
+			const publish = () => {
+				if (disposed) return;
+				const navigation = sources.navigation;
+				const hosts = buildHosts();
+				const next = {
+					hosts: sameHosts(snapshot.hosts, hosts) ? snapshot.hosts : hosts,
+					selectedAddress: navigation?.selection.getSnapshot().externalAddress,
+					nativeSessionsAvailable: navigation !== void 0
+				};
+				const previous = snapshot;
+				const sameSelection = sameAddress(previous.selectedAddress, next.selectedAddress);
+				if (previous.hosts === next.hosts && sameSelection && previous.nativeSessionsAvailable === next.nativeSessionsAvailable) return;
+				snapshot = {
+					...next,
+					selectedAddress: sameSelection ? previous.selectedAddress : next.selectedAddress
+				};
+				for (const listener of [...listeners]) listener();
+			};
+			const stopBackends = sources.subscribeBackends(publish);
+			const stopProfiles = sources.subscribeProfiles(publish);
+			const navigation = sources.navigation;
+			const stopSelection = navigation === void 0 ? void 0 : navigation.selection.subscribe(publish);
+			publish();
+			const guard = (action) => {
+				if (navigation === void 0) return;
+				try {
+					const result = action();
+					if (result !== null && typeof result === "object" && typeof result.catch === "function") result.catch((error) => {
+						sources.onActionError?.(error);
+					});
+				} catch (error) {
+					sources.onActionError?.(error);
+				}
+			};
+			return {
+				getSnapshot: () => snapshot,
+				subscribe: (listener) => {
+					listeners.add(listener);
+					return () => {
+						listeners.delete(listener);
+					};
+				},
+				openSession: (address) => {
+					guard(() => navigation?.openExternalSession(address));
+				},
+				createSession: (address) => {
+					guard(() => navigation?.createExternalSession(address));
+				},
+				connectHost: (profileId) => {
+					sources.connectProfile(profileId);
+				},
+				dispose: () => {
+					if (disposed) return;
+					disposed = true;
+					stopBackends();
+					stopProfiles();
+					stopSelection?.();
+					listeners.clear();
+				}
+			};
+		}
+		/** Resolve the header badge label for one native Session id from the plugin's own catalog. */
+		function externalBindingOf(sessions, sessionId) {
+			if (sessions === void 0) return void 0;
+			try {
+				return sessions.externalIdentityOf(sessionId);
+			} catch {
+				return;
+			}
+		}
+		// packages/perse-remote-dev/src/client/remote-nav/styles.ts
+		/** Theme-token styles for the plugin-owned remote host/project/session group.
+		*
+		* Height contract: `.pcRemoteRoot` is the bounded root — `max-height: 42vh`
+		* with `.pcRemoteList` as its own scroll area — because the core's
+		* `sidebar.workspaces.secondary` wrapper is `flex: none` under the local
+		* tree and guarantees nothing about contribution height. An uncapped group
+		* would squeeze the tree; 42vh keeps at least ~58% of the sidebar with the
+		* tree and scrolls the host list instead of growing.
+		*/
+		const REMOTE_NAV_CSS = [
+			".pcRemoteRoot{box-sizing:border-box;display:flex;min-width:0;flex:0 1 auto;flex-direction:column;max-height:42vh;overflow:hidden;color:var(--dsw-alias-label-primary);font:12px/1.45 system-ui,-apple-system,sans-serif}",
+			".pcRemoteChevron{flex:0 0 auto;transition:transform .12s ease}.pcRemoteChevronOpen{flex:0 0 auto;transform:rotate(90deg);transition:transform .12s ease}",
+			".pcRemoteHeader,.pcRemoteHostButton,.pcRemoteWorkspaceButton,.pcRemoteSession,.pcRemoteSessionSelected{box-sizing:border-box;min-width:0;width:100%;display:flex;align-items:center;border:0;background:transparent;text-align:left}",
+			".pcRemoteHeader{gap:4px;height:26px;padding:0 4px 0 2px}",
+			".pcRemoteTitle{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/20px inherit;text-align:left;cursor:pointer}",
+			".pcRemoteManage,.pcRemoteNew,.pcRemoteAction{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;border:0;border-radius:var(--dsw-radius-sm,6px);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;padding:2px 5px;font:inherit}",
+			".pcRemoteManage{font-size:11px}.pcRemoteNew{height:22px;width:22px;padding:0}",
+			".pcRemoteAction{color:var(--dsw-alias-label-secondary);font-size:11px;line-height:16px;padding:2px 6px}",
+			".pcRemoteTitle:hover,.pcRemoteManage:hover,.pcRemoteNew:hover,.pcRemoteAction:hover,.pcRemoteHostButton:hover,.pcRemoteWorkspaceButton:hover,.pcRemoteSession:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			".pcRemoteHostRow{display:flex;align-items:center;gap:2px;min-width:0}",
+			".pcRemoteHostRow>.pcRemoteHostButton{flex:1 1 auto;width:auto}",
+			".pcRemoteHostButton{height:28px;gap:5px;padding:0 4px;border-radius:var(--dsw-radius-sm,6px);color:var(--dsw-alias-label-secondary);cursor:pointer}",
+			".pcRemoteHostName{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".pcRemoteStatus{flex:0 0 auto;color:var(--dsw-alias-label-tertiary);font-size:11px}",
+			".pcRemoteDot{flex:0 0 auto;width:8px;height:8px;margin:0 4px;border-radius:50%;background:var(--dsw-alias-state-success-primary)}",
+			".pcRemoteList{display:flex;min-height:0;flex-direction:column;overflow-y:auto;padding-left:10px}",
+			".pcRemoteWorkspaceButton{gap:5px;min-height:26px;padding:0 4px;border-radius:var(--dsw-radius-sm,6px);color:var(--dsw-alias-label-secondary);cursor:pointer}",
+			".pcRemoteWorkspaceRow{display:flex;align-items:center;gap:2px;min-width:0}",
+			".pcRemoteWorkspaceRow>.pcRemoteWorkspaceButton{flex:1 1 auto;width:auto}",
+			".pcRemoteCount{flex:0 0 auto;color:var(--dsw-alias-label-tertiary);font-size:11px}",
+			".pcRemoteSession,.pcRemoteSessionSelected{gap:5px;min-height:26px;padding:0 6px 0 14px;border-radius:var(--dsw-radius-sm,6px);color:var(--dsw-alias-label-secondary);cursor:pointer}",
+			".pcRemoteSessionSelected{background:var(--dsw-alias-interactive-bg-selected,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}",
+			".pcRemoteSessionTitle{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".pcRemoteRunning{flex:0 0 auto;color:var(--dsw-alias-state-business-primary);font-size:11px}",
+			".pcRemoteNote{margin:2px 0 4px;padding:0 4px;color:var(--dsw-alias-label-tertiary);font-size:11px;overflow-wrap:anywhere}",
+			".pcRemoteNote[data-tone=warn]{color:var(--dsw-alias-state-warn-primary)}",
+			".pcRemoteRoot :focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}"
+		].join("");
+		// packages/perse-remote-dev/src/client/remote-nav/index.ts
+		/** Plugin-owned remote navigation: the stored-host group and the Session header badge.
+		*
+		* The host group contributes to `sidebar.workspaces.secondary` — the core's
+		* generic `list` hole whose entries render as their own bordered sections
+		* inside the workspace region, below the local Workspace/Session tree
+		* (wide-only; ascending explicit `order`, ties keep registration order;
+		* the owner passes no props and interprets nothing). The group used to sit
+		* at `sidebar.footer.action`, below the account row — the owner rejected
+		* that: the stored machines belong with the workspaces, just in a section
+		* of their own.
+		* `sidebar.workspaces` itself is still NOT usable: it is a `single` hole
+		* occupied by ui-workspace's own browser, and a same-priority registration
+		* throws — taking that seat would replace the local workspace tree, which
+		* N07 forbids. The secondary hole exists precisely so a contribution can
+		* stand beside the tree without touching it.
+		*
+		* Height: the core guarantees nothing about a contribution's height, and a
+		* tall section would squeeze the flex tree above it. The group therefore
+		* caps itself — `max-height: 42vh` on its root with its own scrolling list
+		* — so at least the remaining ~58% of the sidebar stays with the local
+		* tree regardless of how many hosts are stored (the profile store allows
+		* 1000, and the list scrolls instead of growing).
+		*
+		* Rows: one row per stored profile — never only the active host. The state
+		* shown is derived from the observed status plus the `autoConnect` intent
+		* marker only (docs/pc-contract.md: Sidebar host row display states).
+		*
+		* The badge sits in `conversation.session.header.utilities`, a `list` seat
+		* in the Session header.
+		*/
+		const REMOTE_NAV_LOCALE = "perse.remote.navigation";
+		const remoteNavLocale = {
+			zh: {
+				section: "远程主机",
+				connections: "连接设置",
+				connectionsAria: "打开远程主机连接设置",
+				"status.connected": "在线",
+				"status.offline": "离线",
+				"status.notConnected": "未连接",
+				"status.revoked": "已撤销",
+				"action.reconnect": "重连",
+				"action.connect": "连接",
+				"status.running": "运行中",
+				"sessions.count": "{n} 个会话",
+				"session.untitled": "未命名会话",
+				"session.new": "新建会话",
+				"session.newIn": "在“{name}”中新建会话",
+				"session.empty": "暂无会话",
+				"workspace.empty": "暂无工作区",
+				catalogError: "目录同步失败：{error}",
+				empty: "还没有已配对的远程主机。",
+				upgrade: "当前 DSH 核心缺少原生远程会话接口；连接配置仍可使用。",
+				"header.remote": "远程 · {host} / {workspace}",
+				"header.remoteHint": "使用远程主机的模型；当前连接暂不支持切换模型、上传文件或插入本机命令。",
+				"header.remoteHintWithModel": "使用远程主机的模型；可在输入框下方切换远程模型。上传文件与插入本机命令暂不支持。"
+			},
+			en: {
+				section: "Remote hosts",
+				connections: "Connections",
+				connectionsAria: "Open remote host connection settings",
+				"status.connected": "Online",
+				"status.offline": "Offline",
+				"status.notConnected": "Not connected",
+				"status.revoked": "Revoked",
+				"action.reconnect": "Reconnect",
+				"action.connect": "Connect",
+				"status.running": "Running",
+				"sessions.count": "{n} sessions",
+				"session.untitled": "Untitled session",
+				"session.new": "New session",
+				"session.newIn": "Create a session in “{name}”",
+				"session.empty": "No sessions",
+				"workspace.empty": "No workspaces",
+				catalogError: "Catalog refresh failed: {error}",
+				empty: "No paired remote hosts yet.",
+				upgrade: "This DSH core has no native remote-session interface; connection settings remain available.",
+				"header.remote": "Remote · {host} / {workspace}",
+				"header.remoteHint": "Using the remote host model. This connection does not support changing models, uploading files, or inserting local commands.",
+				"header.remoteHintWithModel": "Using the remote host model; switch remote models below the composer. File upload and local commands are not supported yet."
+			}
+		};
+		const h = react.createElement;
+		const Chevron = ({ open }) => h(_deepseek_ai_dsh_client_ui_primitives.IconTriangleRightFillRegular, {
+			size: 11,
+			className: open ? "pcRemoteChevronOpen" : "pcRemoteChevron"
+		});
+		const ManageIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 24 24",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth: 1.7,
+			"aria-hidden": true
+		}, h("rect", {
+			x: 3,
+			y: 5,
+			width: 18,
+			height: 13,
+			rx: 2
+		}), h("path", { d: "M8 21h8M12 18v3" }));
+		/** Visible label for each row state; 「在线」 renders as the green dot instead of text. */
+		const rowStatusLabel = (t, state) => {
+			if (state === "connected") return t("status.connected");
+			if (state === "reconnect") return t("status.offline");
+			if (state === "revoked") return t("status.revoked");
+			return t("status.notConnected");
+		};
+		/** Stored-host group: every stored profile is a row; sessions render only under the
+		* one host whose generation is active for native sessions. */
+		function RemoteWorkspaceSection(props) {
+			const { nav, openConnections, t } = props;
+			const snapshot = props.useNav((value) => value);
+			const [open, setOpen] = react.useState(true);
+			const [closedHosts, setClosedHosts] = react.useState({});
+			const [openProjects, setOpenProjects] = react.useState({});
+			const renderSessions = (hostKey, backend, workspace) => {
+				const key = `${hostKey}/${workspace.id}`;
+				if (openProjects[key] !== true) return null;
+				if (workspace.sessions.length === 0) return h("p", { className: "pcRemoteNote" }, t("session.empty"));
+				const offline = backend.status !== "connected";
+				return h(react.Fragment, { key }, ...workspace.sessions.map((session) => {
+					const title = session.title === "" || session.title === session.id ? t("session.untitled") : session.title;
+					const sessionAddress = {
+						kind: "external-session",
+						backendId: backend.backendId,
+						hostId: backend.hostId,
+						workspaceId: workspace.id,
+						sessionId: session.id
+					};
+					const selected = sameAddress(snapshot.selectedAddress, sessionAddress);
+					return h("button", {
+						key: `${key}/${session.id}`,
+						type: "button",
+						className: selected ? "pcRemoteSessionSelected" : "pcRemoteSession",
+						"aria-current": selected ? "page" : void 0,
+						"aria-label": title,
+						disabled: offline,
+						onClick: () => {
+							nav.openSession(sessionAddress);
+						}
+					}, h("span", { className: "pcRemoteSessionTitle" }, title), session.running ? h("span", { className: "pcRemoteRunning" }, t("status.running")) : null);
+				}));
+			};
+			const renderHost = (host) => {
+				const hostKey = host.profileId;
+				const backend = host.backend;
+				const hasTree = backend !== void 0;
+				const hostOpen = hasTree && closedHosts[hostKey] !== true;
+				const statusText = rowStatusLabel(t, host.rowState);
+				return h("div", {
+					className: "pcRemoteHost",
+					key: hostKey,
+					"data-remote-host": hostKey
+				}, h("div", { className: "pcRemoteHostRow" }, h("button", {
+					type: "button",
+					className: "pcRemoteHostButton",
+					"aria-label": `${host.hostName} · ${host.deviceName} · ${statusText}`,
+					"aria-expanded": hasTree ? hostOpen : void 0,
+					onClick: () => {
+						setClosedHosts((value) => ({
+							...value,
+							[hostKey]: value[hostKey] === true ? false : true
+						}));
+					}
+				}, hasTree ? h(Chevron, { open: hostOpen }) : null, h("span", { className: "pcRemoteHostName" }, `${host.hostName} · ${host.deviceName}`), host.rowState === "connected" ? h("span", {
+					className: "pcRemoteDot",
+					"data-state": "connected",
+					"aria-hidden": true
+				}) : h("span", {
+					className: "pcRemoteStatus",
+					"data-state": "offline"
+				}, statusText)), host.rowState === "reconnect" ? h("button", {
+					type: "button",
+					className: "pcRemoteAction",
+					"aria-label": t("action.reconnect"),
+					onClick: () => {
+						nav.connectHost(host.profileId);
+					}
+				}, t("action.reconnect")) : null, host.rowState === "not-connected" ? h("button", {
+					type: "button",
+					className: "pcRemoteAction",
+					"aria-label": t("action.connect"),
+					onClick: () => {
+						nav.connectHost(host.profileId);
+					}
+				}, t("action.connect")) : null), hasTree && backend !== void 0 && backend.warning !== void 0 && backend.warning !== "" ? h("p", {
+					className: "pcRemoteNote",
+					"data-tone": "warn",
+					role: "status"
+				}, backend.warning) : null, hasTree && backend !== void 0 && backend.catalogError !== void 0 ? h("p", {
+					className: "pcRemoteNote",
+					"data-tone": "warn",
+					role: "status"
+				}, t("catalogError", { error: backend.catalogError })) : null, hostOpen && backend !== void 0 ? h(react.Fragment, null, ...backend.workspaces.map((workspace) => {
+					const projectKey = `${hostKey}/${workspace.id}`;
+					const workspaceAddress = {
+						kind: "external-workspace",
+						backendId: backend.backendId,
+						hostId: backend.hostId,
+						workspaceId: workspace.id
+					};
+					const count = t("sessions.count", { n: workspace.sessions.length });
+					return h("div", {
+						className: "pcRemoteWorkspace",
+						key: projectKey,
+						"data-remote-workspace": projectKey
+					}, h("div", { className: "pcRemoteWorkspaceRow" }, h("button", {
+						type: "button",
+						className: "pcRemoteWorkspaceButton",
+						"aria-label": `${workspace.name} · ${count}`,
+						"aria-expanded": openProjects[projectKey] === true,
+						title: workspace.name,
+						onClick: () => {
+							setOpenProjects((value) => ({
+								...value,
+								[projectKey]: value[projectKey] !== true
+							}));
+						}
+					}, h(Chevron, { open: openProjects[projectKey] === true }), h("span", { className: "pcRemoteHostName" }, workspace.name), h("span", { className: "pcRemoteCount" }, count)), h("button", {
+						type: "button",
+						className: "pcRemoteNew",
+						"aria-label": t("session.newIn", { name: workspace.name }),
+						title: t("session.new"),
+						disabled: backend.status !== "connected",
+						onClick: () => {
+							nav.createSession(workspaceAddress);
+						}
+					}, h(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutlineRegular, { size: 14 }))), renderSessions(hostKey, backend, workspace));
+				}), backend.workspaces.length === 0 ? h("p", { className: "pcRemoteNote" }, t("workspace.empty")) : null) : null);
+			};
+			return h("section", {
+				className: "pcRemoteRoot",
+				"aria-label": t("section"),
+				"data-remote-secondary": "1"
+			}, h("style", { "data-perse-remote-nav-styles": "1" }, REMOTE_NAV_CSS), h("div", { className: "pcRemoteHeader" }, h("button", {
+				type: "button",
+				className: "pcRemoteTitle",
+				"aria-expanded": open,
+				"aria-label": t("section"),
+				onClick: () => {
+					setOpen((value) => !value);
+				}
+			}, h(Chevron, { open }), h("span", null, t("section"))), h("button", {
+				type: "button",
+				className: "pcRemoteManage",
+				"aria-label": t("connectionsAria"),
+				title: t("connections"),
+				onClick: openConnections
+			}, h(ManageIcon, null), h("span", null, t("connections")))), open ? h("div", { className: "pcRemoteList" }, snapshot.nativeSessionsAvailable ? null : h("p", {
+				className: "pcRemoteNote",
+				"data-tone": "warn",
+				role: "note"
+			}, t("upgrade")), snapshot.hosts.length === 0 ? h("p", { className: "pcRemoteNote" }, t("empty")) : null, ...snapshot.hosts.map(renderHost)) : null);
+		}
+		/** Leading host/project identity for a selected remote Session, in the native header. */
+		function RemoteSessionBadge(props) {
+			const { label, hint } = props;
+			if (label === void 0) return null;
+			const description = hint === void 0 ? label : `${label}. ${hint}`;
+			return h("span", {
+				role: "status",
+				"data-remote-session-badge": "1",
+				title: hint,
+				"aria-label": description,
+				style: {
+					color: "var(--dsw-alias-label-tertiary)",
+					border: "1px solid var(--dsw-alias-border-l2)",
+					borderRadius: "999px",
+					padding: "1px 8px",
+					fontSize: "11px",
+					lineHeight: "16px",
+					maxWidth: "260px",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+					whiteSpace: "nowrap"
+				}
+			}, label);
+		}
 		// packages/perse-remote-dev/src/client/index.ts
 		const PC_PANEL = "perse-remote-connection";
 		const LOG = "[perse-remote-dev]";
@@ -6583,6 +7618,8 @@ window.__ModuleLoader__.load({
 				inject: [
 					"slots",
 					"locale",
+					"layout",
+					"uiWorkspace",
 					"remote.remoteDev",
 					"sessions"
 				],
@@ -6597,13 +7634,39 @@ window.__ModuleLoader__.load({
 			const remote = ctx.remote.remoteDev;
 			const controller = createPcConnectionController({ remote });
 			const t = ctx.locale.bind(PC_CONNECTION_LOCALE);
+			const tn = ctx.locale.bind(REMOTE_NAV_LOCALE);
+			const tm = ctx.locale.bind(PC_MODEL_LOCALE);
 			ctx.effect(() => ctx.locale.register(PC_CONNECTION_LOCALE, pcConnectionLocale), "remote connection dictionaries");
+			ctx.effect(() => ctx.locale.register(REMOTE_NAV_LOCALE, remoteNavLocale), "remote navigation dictionaries");
+			ctx.effect(() => ctx.locale.register(PC_MODEL_LOCALE, pcModelLocale), "remote model seat dictionaries");
+			const sessions = ctx.get("sessions");
 			const nativeSessions = new PcNativeSessionIntegration({
-				sessions: ctx.get("sessions"),
+				sessions,
 				controller,
 				remote
 			});
 			if (controller.getSnapshot().nativeSessionSupport === "unavailable") controller.refreshProfiles();
+			const nav = createRemoteNavModel({
+				getBackends: () => nativeSessions.getBackends(),
+				subscribeBackends: (listener) => nativeSessions.subscribeBackends(listener),
+				getProfiles: () => controller.getSnapshot().profiles,
+				subscribeProfiles: (listener) => controller.subscribe(listener),
+				getActiveProfileId: () => nativeSessions.getActiveProfileId(),
+				connectProfile: (profileId) => {
+					controller.connectProfile(profileId).then((outcome) => {
+						if (!outcome.ok) console.warn(LOG, "remote host connect failed:", outcome.failure.code, outcome.failure.message);
+					}, (error) => {
+						console.warn(LOG, "remote host connect failed:", error);
+					});
+				},
+				navigation: navigationApiOf(serviceOf(ctx, "uiWorkspace")),
+				onActionError: (error) => {
+					console.warn(LOG, "remote session action failed:", error);
+				}
+			});
+			const openConnections = () => {
+				ctx.layout.selectPanel(PC_PANEL);
+			};
 			ctx.slots.inject("main", () => ctx.slots.register({
 				name: "main",
 				key: PC_PANEL,
@@ -6613,12 +7676,39 @@ window.__ModuleLoader__.load({
 					hooks: { connection: controller }
 				})
 			}, PcConnectionSettings));
-			ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
-				name: "sidebar.panellist",
-				id: PC_PANEL,
-				order: 4,
-				label: () => t("panel")
-			}, PcPanelIcon));
+			ctx.effect(() => ctx.slots.inject("sidebar.workspaces.secondary", () => ctx.slots.register({
+				name: "sidebar.workspaces.secondary",
+				id: "perse-remote-dev-remote-hosts",
+				order: 50,
+				locale: REMOTE_NAV_LOCALE,
+				inject: () => ({
+					nav,
+					openConnections,
+					hooks: { nav }
+				})
+			}, RemoteWorkspaceSection)), "remote workspace group");
+			ctx.effect(() => ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+				name: "conversation.session.header.utilities",
+				id: "perse-remote-dev-session-badge",
+				locale: REMOTE_NAV_LOCALE,
+				inject: (sessionId) => remoteSessionIdentity(sessions, nativeSessions, asNativeSessionId(sessionId), tn)
+			}, RemoteSessionBadge)), "remote Session identity");
+			ctx.effect(() => ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
+				name: "conversation.input.right",
+				id: "perse-remote-dev-model-seat",
+				locale: PC_MODEL_LOCALE,
+				inject: (sessionId) => ({
+					lookup: () => {
+						const host = nativeSessions.seatHostFor(sessionId);
+						if (host === void 0) return void 0;
+						return {
+							backend: host.backend,
+							remoteSessionId: host.remoteSessionId
+						};
+					},
+					t: (key, params) => tm(key, params)
+				})
+			}, PcRemoteModelSeat)), "remote model seat");
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
 				id: "remote-dev-legacy-import",
@@ -6628,9 +7718,35 @@ window.__ModuleLoader__.load({
 				inject: () => ({ remote })
 			}, LegacyConfigSettings));
 			ctx.effect(() => () => {
+				nav.dispose();
 				controller.dispose();
 				nativeSessions.dispose();
 			}, "remote connection settings controller");
+		}
+		/** Read an optional core service without failing activation when a runtime lacks it. */
+		function serviceOf(ctx, name) {
+			try {
+				return ctx.get(name);
+			} catch {
+				return;
+			}
+		}
+		/** Header badge label for a remote Session, resolved from the plugin's own catalog. */
+		function remoteSessionIdentity(sessions, nativeSessions, sessionId, t) {
+			const identity = externalBindingOf(sessions, sessionId);
+			if (identity === void 0) return {
+				label: void 0,
+				hint: void 0
+			};
+			const workspace = nativeSessions.getBackends().find((candidate) => candidate.backendId === identity.backendId && candidate.hostId === identity.hostId)?.workspaces.find((candidate) => candidate.id === identity.address.workspaceId);
+			const seat = nativeSessions.seatHostFor(String(sessionId));
+			return {
+				label: t("header.remote", {
+					host: identity.hostName,
+					workspace: workspace?.name ?? identity.profileName
+				}),
+				hint: seat !== void 0 && seat.backend.modelSelectionAvailable() ? t("header.remoteHintWithModel") : t("header.remoteHint")
+			};
 		}
 		exports.apply = apply;
 		exports.inject = inject;

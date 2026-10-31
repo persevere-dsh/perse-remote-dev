@@ -17,11 +17,28 @@ const profileSchema = z.object({
   deviceName: z.string().min(1).max(100),
   token: z.string().min(32).max(4096),
   status: z.enum(['disconnected', 'connected', 'offline', 'revoked']),
+  /**
+   * Persisted connection intent (docs/pc-contract.md: Connection intent, transport
+   * loss, and reconnect). Optional on disk: a file written before this field
+   * existed derives its intent from the stored status at read time.
+   */
+  desiredState: z.enum(['connected', 'disconnected']).optional(),
   protocolVersion: z.string().max(32).optional(),
   verifiedAt: z.string().datetime().optional(),
 }).strict()
 
 export type PcStoredProfile = z.infer<typeof profileSchema>
+
+/**
+ * The stored intent of a profile. A legacy document has no `desiredState`, so its
+ * intent is read from the stored status: a profile recorded as live was wanted
+ * connected, and one recorded as `offline` or `disconnected` was left offline by
+ * its user and must not start reconnecting. Read-time derivation only — loading
+ * never rewrites the store; the derived value lands with the next write.
+ */
+export function pcDesiredStateOf(profile: PcStoredProfile): 'connected' | 'disconnected' {
+  return profile.desiredState ?? (profile.status === 'connected' ? 'connected' : 'disconnected')
+}
 
 const documentSchema = z.object({ version: z.literal(1), profiles: z.array(profileSchema).max(1000) }).strict()
 const PROFILE_FILE_MAX_BYTES = 8 * 1024 * 1024
@@ -75,8 +92,12 @@ export class PcProfileStore {
     })
   }
 
+  /**
+   * The browser-facing view. It carries neither the token nor the stored intent:
+   * intent reaches the UI only as the derived `autoConnect` eligibility marker.
+   */
   view(profile: PcStoredProfile, status: PcProfileView['status']): PcProfileView {
-    const { token: _secret, protocolVersion, verifiedAt, ...safe } = profile
+    const { token: _secret, desiredState: _intent, protocolVersion, verifiedAt, ...safe } = profile
     return {
       ...safe,
       status,
@@ -108,6 +129,9 @@ export class PcProfileStore {
       return parsed
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, profiles: [] }
+      // One structured line naming the file and the failure class, so a stored
+      // profile list that never loads is never a silent black box. Never a token.
+      console.error(`[perse-remote-dev] pc-profile-store load failed file=${file} class=${errorName(error)} reason=${redactReason(error)}`)
       throw error
     }
   }
@@ -142,6 +166,20 @@ export class PcProfileStore {
 function defaultDshHome(): string {
   const configured = process.env.DSH_HOME
   return configured !== undefined && configured !== '' ? configured : join(homedir(), '.dsh')
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error && error.name !== '' ? error.name : typeof error
+}
+
+/** Failure reason safe for one log line: shape/class text only, credentials scrubbed. */
+function redactReason(error: unknown): string {
+  const raw = error instanceof Error ? error.message : `non-error ${typeof error}`
+  return raw
+    .replace(/(?:secret|token|bearer)[=: ]+\S+/gi, '[redacted]')
+    .replace(/[A-Za-z0-9_-]{40,}/g, '[redacted]')
+    .replace(/\s+/g, ' ')
+    .slice(0, 160)
 }
 
 async function assertNoSymlinkPath(path: string): Promise<void> {

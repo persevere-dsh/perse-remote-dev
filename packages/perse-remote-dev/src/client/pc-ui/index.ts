@@ -215,12 +215,6 @@ function PcConnectionSettings(props: PcConnectionSettingsProps): React.ReactElem
     connected ? h('p', { className: css.footnote }, t('footnote')) : null)
 }
 
-export function PcPanelIcon(props: { readonly size?: number }): React.ReactElement {
-  const size = props.size ?? 18
-  return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, 'aria-hidden': true },
-    h('rect', { x: 4, y: 5, width: 16, height: 14, rx: 2 }), h('path', { d: 'M8 9h8M8 13h5M8 17h8' }))
-}
-
 interface LegacySettingsInjected { readonly remote: Pick<PcRemote, 'legacyConfigPreview' | 'legacyConfigApply'> }
 type LegacySettingsProps = InjectFace<LegacySettingsInjected> & PropsLocale<typeof PC_CONNECTION_LOCALE>
 
@@ -271,3 +265,5 @@ function LegacyConfigSettings(props: LegacySettingsProps): React.ReactElement {
 }
 
 export { LegacyConfigSettings, PcConnectionSettings }
+export { PC_MODEL_LOCALE, pcModelLocale, PcRemoteModelSeat } from './model-seat.ts'
+export type { PcModelLocaleKey, PcRemoteModelSeatInjected, PcRemoteModelSeatHost, PcRemoteModelSeatBackend } from './model-seat.ts'
