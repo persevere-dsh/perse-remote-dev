@@ -427,3 +427,71 @@ function failingRemote(attempts) {
     pcCall: async () => ({ ok: false, error: failure }),
   }
 }
+
+/** A minimal document stand-in: the visibility rule is about the browser exposing this
+ * exact shape, and node has none, so the integration must also work without it. */
+function visibilityDocument(t) {
+  const listeners = new Map()
+  const doc = {
+    visibilityState: 'hidden',
+    addEventListener(type, listener) {
+      listeners.set(type, [...(listeners.get(type) ?? []), listener])
+    },
+    removeEventListener(type, listener) {
+      listeners.set(type, (listeners.get(type) ?? []).filter(item => item !== listener))
+    },
+    dispatch(type) {
+      for (const listener of listeners.get(type) ?? []) listener()
+    },
+    listenerCount(type) {
+      return (listeners.get(type) ?? []).length
+    },
+  }
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  Object.defineProperty(globalThis, 'document', { value: doc, configurable: true, writable: true })
+  t.after(() => {
+    if (previous === undefined) delete globalThis.document
+    else Object.defineProperty(globalThis, 'document', previous)
+  })
+  return doc
+}
+
+test('a page becoming visible again runs a waiting retry instead of trusting the frozen timer', async (t) => {
+  captureConsole(t)
+  const doc = visibilityDocument(t)
+  const attempts = []
+  const remote = failingRemote(attempts)
+  const { integration, controller } = activationHarness(t, remote)
+  await waitUntil(() => attempts.length >= 1)
+  const pending = attempts.length
+
+  // Still hidden: a visibility change is not a reason to reach the host.
+  doc.visibilityState = 'hidden'
+  doc.dispatch('visibilitychange')
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  assert.equal(attempts.length, pending, 'a hidden resume attempts nothing')
+
+  // Visible again: the attempt that was waiting on a throttled timer runs now, well
+  // inside the smallest backoff step (~2s), so timing is the assertion here.
+  doc.visibilityState = 'visible'
+  const at = Date.now()
+  doc.dispatch('visibilitychange')
+  await waitUntil(() => attempts.length > pending, 1_500)
+  assert.ok(Date.now() - at < 1_500, 'the waiting retry ran on resume, not on the frozen timer')
+
+  integration.dispose()
+  controller.dispose()
+  assert.equal(doc.listenerCount('visibilitychange'), 0, 'disposing removes the listener')
+})
+
+test('without a document the integration still runs the same reconnect loop', async (t) => {
+  captureConsole(t)
+  assert.equal(typeof globalThis.document, 'undefined', 'node-side harness really has no document')
+  const attempts = []
+  const remote = failingRemote(attempts)
+  const { integration, controller } = activationHarness(t, remote)
+  await waitUntil(() => attempts.length >= 2, 20_000)
+  integration.dispose()
+  controller.dispose()
+  assert.ok(attempts.length >= 2, 'the loop is not gated on a browser document existing')
+})

@@ -28,6 +28,9 @@ export class PcNativeSessionIntegration {
    */
   private liveConnection: { readonly profileId: string; readonly generation: string } | undefined
   private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  /** Set only when a real document exists; the visibility rule is browser-side by nature. */
+  private visibilityDocument: { removeEventListener?: (type: string, listener: () => void) => void } | undefined
+  private readonly onVisibilityChange = (): void => { this.attemptPendingReconnects() }
   private readonly reconnecting = new Set<string>()
   private readonly reconnectFailures = new Map<string, number>()
   private disposed = false
@@ -118,12 +121,47 @@ export class PcNativeSessionIntegration {
     this.refreshPendingCreationWarning()
     this.controller.setCreationReceiptAcknowledger(operationId => this.acknowledgeCreation(operationId))
     this.stopController = this.controller.subscribe(() => this.sync(this.controller.getSnapshot()))
-    if (supported) void this.restoreConnectedProfiles()
+    if (supported) {
+      void this.restoreConnectedProfiles()
+      this.attachVisibilityHook()
+    }
+  }
+
+  /**
+   * Browsers throttle and eventually freeze timers in a hidden tab, so a retry that is
+   * merely waiting on a backoff timer can be arbitrarily late — which is exactly the
+   * state an operator sees after leaving the page in the background overnight. The page
+   * becoming visible again is the honest moment to run what was waiting.
+   */
+  private attachVisibilityHook(): void {
+    const doc = (globalThis as {
+      document?: { addEventListener?: (type: string, listener: () => void) => void }
+    }).document
+    if (typeof doc?.addEventListener !== 'function') return
+    doc.addEventListener('visibilitychange', this.onVisibilityChange)
+    this.visibilityDocument = doc as { removeEventListener?: (type: string, listener: () => void) => void }
+  }
+
+  /** Runs every pending backoff attempt now; see the contract's hidden-page rule. */
+  private attemptPendingReconnects(): void {
+    const doc = (globalThis as { document?: { visibilityState?: string } }).document
+    if (doc?.visibilityState !== 'visible') return
+    for (const [profileId, timer] of [...this.reconnectTimers]) {
+      clearTimeout(timer)
+      this.reconnectTimers.delete(profileId)
+      // The ladder is deliberately untouched: a resume is not a success, and the
+      // attempt still re-reads the stored intent before it reaches the host.
+      void this.attemptReconnect(profileId)
+    }
   }
 
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    if (typeof this.visibilityDocument?.removeEventListener === 'function') {
+      this.visibilityDocument.removeEventListener('visibilitychange', this.onVisibilityChange)
+    }
+    this.visibilityDocument = undefined
     for (const timer of this.reconnectTimers.values()) clearTimeout(timer)
     this.reconnectTimers.clear()
     this.reconnectFailures.clear()

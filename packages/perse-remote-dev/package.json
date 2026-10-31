@@ -1,6 +1,6 @@
 {
   "name": "perse-remote-dev",
-  "version": "0.3.1-rc.7",
+  "version": "0.3.1-rc.8",
   "private": true,
   "engines": {
     "node": ">=22"

@@ -6753,6 +6753,11 @@ window.__ModuleLoader__.load({
 			*/
 			liveConnection;
 			reconnectTimers = /* @__PURE__ */ new Map();
+			/** Set only when a real document exists; the visibility rule is browser-side by nature. */
+			visibilityDocument;
+			onVisibilityChange = () => {
+				this.attemptPendingReconnects();
+			};
 			reconnecting = /* @__PURE__ */ new Set();
 			reconnectFailures = /* @__PURE__ */ new Map();
 			disposed = false;
@@ -6841,11 +6846,37 @@ window.__ModuleLoader__.load({
 				this.refreshPendingCreationWarning();
 				this.controller.setCreationReceiptAcknowledger((operationId) => this.acknowledgeCreation(operationId));
 				this.stopController = this.controller.subscribe(() => this.sync(this.controller.getSnapshot()));
-				if (supported) this.restoreConnectedProfiles();
+				if (supported) {
+					this.restoreConnectedProfiles();
+					this.attachVisibilityHook();
+				}
+			}
+			/**
+			* Browsers throttle and eventually freeze timers in a hidden tab, so a retry that is
+			* merely waiting on a backoff timer can be arbitrarily late — which is exactly the
+			* state an operator sees after leaving the page in the background overnight. The page
+			* becoming visible again is the honest moment to run what was waiting.
+			*/
+			attachVisibilityHook() {
+				const doc = globalThis.document;
+				if (typeof doc?.addEventListener !== "function") return;
+				doc.addEventListener("visibilitychange", this.onVisibilityChange);
+				this.visibilityDocument = doc;
+			}
+			/** Runs every pending backoff attempt now; see the contract's hidden-page rule. */
+			attemptPendingReconnects() {
+				if (globalThis.document?.visibilityState !== "visible") return;
+				for (const [profileId, timer] of [...this.reconnectTimers]) {
+					clearTimeout(timer);
+					this.reconnectTimers.delete(profileId);
+					this.attemptReconnect(profileId);
+				}
 			}
 			dispose() {
 				if (this.disposed) return;
 				this.disposed = true;
+				if (typeof this.visibilityDocument?.removeEventListener === "function") this.visibilityDocument.removeEventListener("visibilitychange", this.onVisibilityChange);
+				this.visibilityDocument = void 0;
 				for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
 				this.reconnectTimers.clear();
 				this.reconnectFailures.clear();
