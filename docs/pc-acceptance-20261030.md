@@ -52,3 +52,13 @@ Recorded result on 2026-10-30: **14 通过 / 0 失败, exit 0** (output in `/tmp
 - The SSH tunnel used for these runs (`ServerAliveInterval=20`) was closed by the remote host after ~2h (`exit 255`, `Connection to ohmyllm.deslord.xyz closed by remote host`). Cause not established: `sshd -T` yields no usable output for a non-root caller, so neither an idle timeout nor an intermediate NAT can be blamed with evidence. Re-established with `ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4`, then `127.0.0.1:18791/health → 200` at 20:29.
 - `pkill -f "perse-remote-test"`-style matching self-matches the caller's own ssh command line. Stop processes by PID.
 - Two `pgrep -f "perse-remote-test --no-open"` matches can include the caller's own ssh line; `ss -ltnp` proved a single listener (PID `810260`) on `127.0.0.1:18791`.
+
+## Addendum (2026-10-31): the hidden-page gap found on this build, and its fix
+
+Observed on a page left open since the 2026-10-30 runs: both stored hosts read 离线 · 重连 while the host behind the tunnel was alive (`health 200`) and both stored intents were still `connected`. Cause: browsers throttle and eventually freeze timers in a hidden tab, so the backoff loop was sitting on a dead timer. This does not invalidate item A10 — a fresh page or a restarted instance still restores both hosts by intent.
+
+Fix, in `0.3.1-rc.8` (commit `67f1d5f`): the contract states the hidden-page rule, and the integration runs every pending attempt when the page becomes visible again, without resetting the ladder and without bypassing the intent re-read. Two tests added (73 → 75, exit 0): a hidden resume attempts nothing, a visible resume runs the waiting attempt inside the smallest backoff step; `test:pc-ui` unchanged at 26/26.
+
+Live re-verification of `0.3.1-rc.8` on a fresh process (instance `http://127.0.0.1:59603`, new token, same isolated profile and Chrome window `8801`): stored state came back `spark-9732 status=connected protocol=1.4` with no manual click, `lxldeMac-mini.local status=offline` with intent `connected` (its gateway really is down). Screenshot `/tmp/rc8-01-two-states-fresh-process.png` (sha256 `323ad82470ecd4ff…`) shows both row states together, with the online host's two projects and per-project new-session controls.
+
+Interaction limit found the same morning: coordinate clicks were dispatched to window `8801` and changed nothing (the screenshot hash was bit-for-bit identical before and after two clicks). When the isolated Chrome window is not the frontmost window, pointer events land elsewhere; raising it steals the operator's focus, so the attempt was stopped rather than escalated.
