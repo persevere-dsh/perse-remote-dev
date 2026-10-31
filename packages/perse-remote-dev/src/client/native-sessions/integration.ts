@@ -28,6 +28,13 @@ export class PcNativeSessionIntegration {
    */
   private liveConnection: { readonly profileId: string; readonly generation: string } | undefined
   private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  /**
+   * The last generation whose row this page saw reported `connected` by the host, per
+   * profile. Only a transition away from it counts as a host-reported loss, which is why
+   * it is not cleared when a backoff stops: the healthy snapshot that stops the backoff is
+   * the same observation the next loss is measured against. Bounded by the profile count.
+   */
+  private readonly rowSaidConnected = new Map<string, string>()
   /** Set only when a real document exists; the visibility rule is browser-side by nature. */
   private visibilityDocument: { removeEventListener?: (type: string, listener: () => void) => void } | undefined
   private readonly onVisibilityChange = (): void => { this.attemptPendingReconnects() }
@@ -165,6 +172,7 @@ export class PcNativeSessionIntegration {
     for (const timer of this.reconnectTimers.values()) clearTimeout(timer)
     this.reconnectTimers.clear()
     this.reconnectFailures.clear()
+    this.rowSaidConnected.clear()
     this.reconnecting.clear()
     this.liveConnection = undefined
     this.controller.setCreationReceiptAcknowledger(() => undefined)
@@ -264,7 +272,9 @@ export class PcNativeSessionIntegration {
         return
       }
       const connection = this.controller.getSnapshot().connection
-      if (connection.status === 'connected' && connection.profileId === profileId) {
+      // "Already connected" only counts while the host agrees: a page whose snapshot is
+      // stale must not use it to cancel the retry its own row says is needed.
+      if (connection.status === 'connected' && connection.profileId === profileId && profile.status !== 'offline') {
         this.stopReconnect(profileId)
         return
       }
@@ -302,11 +312,25 @@ export class PcNativeSessionIntegration {
     const connection = snapshot.connection
     if (connection.status === 'connected' && connection.profileId !== null
       && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
+      const profile = snapshot.profiles.find(item => item.profileId === connection.profileId)
+      if (profile?.status === 'offline') {
+        // The row is the host's own observation of its socket. Seeing it offline *after*
+        // it said connected for this very generation means the link was lost while the
+        // page was idle and no call has failed yet — the state whose row already reads
+        // 离线. A row that never said connected is not evidence of a loss: right after a
+        // pairing the saved row can still read offline while the confirmed socket is live.
+        if (this.rowSaidConnected.get(connection.profileId) === connection.generation) {
+          this.liveConnection = undefined
+          this.scheduleReconnect(connection.profileId, 0)
+          return
+        }
+      } else if (profile?.status === 'connected') {
+        this.rowSaidConnected.set(connection.profileId, connection.generation)
+      }
       // A verified link exists in this process. It is the fact a later loss is
       // measured against, and any backoff for this profile is over.
       this.liveConnection = { profileId: connection.profileId, generation: connection.generation }
       this.stopReconnect(connection.profileId)
-      const profile = snapshot.profiles.find(item => item.profileId === connection.profileId)
       if (profile === undefined) return
       if (this.backend?.generation === connection.generation && this.backend.backendId === connection.profileId) return
       this.install(profile, {

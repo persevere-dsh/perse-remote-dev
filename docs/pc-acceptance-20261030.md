@@ -55,7 +55,11 @@ Recorded result on 2026-10-30: **14 通过 / 0 失败, exit 0** (output in `/tmp
 
 ## Addendum (2026-10-31): the hidden-page gap found on this build, and its fix
 
-Observed on a page left open since the 2026-10-30 runs: both stored hosts read 离线 · 重连 while the host behind the tunnel was alive (`health 200`) and both stored intents were still `connected`. Cause: browsers throttle and eventually freeze timers in a hidden tab, so the backoff loop was sitting on a dead timer. This does not invalidate item A10 — a fresh page or a restarted instance still restores both hosts by intent.
+Observed on a page left open since the 2026-10-30 runs: both stored hosts read 离线 · 重连 while the host behind the tunnel was alive (`health 200`) and both stored intents were still `connected`.
+
+The first explanation written here — Chrome freezing timers in a hidden tab — was **wrong**, and the record is corrected because it was tested rather than assumed. Reproduced on `0.3.1-rc.8` in a visible tab: the tunnel was closed at 14:47, restored at 14:48, and the row still read 离线 two minutes later, with no attempt. An explicit click on the row's 重连 (`s000000e1:31`, status `connected` 1.27s later) proved the whole connect path is healthy and fast, so what was missing was not a timer — the retry was never armed. Cause: the loss of a live link was only recognized when a call failed (connection status `error`). A page that simply sits idle never fails a call, so a host-side socket death — the normal case — left the client holding a stale "connected" snapshot, and that same stale snapshot made the healthy path stop any backoff.
+
+Two rules were added, contract first: a profile row that said `connected` for a generation and then reads `offline` is itself the loss trigger (the transition, so a just-paired saved row that never said connected cannot be mistaken for a loss); and an attempt is no longer cancelled as "already connected" while the host says the profile is offline. The visibility rule added the same morning stays — a resume runs a waiting attempt — but it is a convenience on top of the above, not the fix.
 
 Fix, in `0.3.1-rc.8` (commit `67f1d5f`): the contract states the hidden-page rule, and the integration runs every pending attempt when the page becomes visible again, without resetting the ladder and without bypassing the intent re-read. Two tests added (73 → 75, exit 0): a hidden resume attempts nothing, a visible resume runs the waiting attempt inside the smallest backoff step; `test:pc-ui` unchanged at 26/26.
 

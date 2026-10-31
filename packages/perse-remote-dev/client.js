@@ -6753,6 +6753,13 @@ window.__ModuleLoader__.load({
 			*/
 			liveConnection;
 			reconnectTimers = /* @__PURE__ */ new Map();
+			/**
+			* The last generation whose row this page saw reported `connected` by the host, per
+			* profile. Only a transition away from it counts as a host-reported loss, which is why
+			* it is not cleared when a backoff stops: the healthy snapshot that stops the backoff is
+			* the same observation the next loss is measured against. Bounded by the profile count.
+			*/
+			rowSaidConnected = /* @__PURE__ */ new Map();
 			/** Set only when a real document exists; the visibility rule is browser-side by nature. */
 			visibilityDocument;
 			onVisibilityChange = () => {
@@ -6880,6 +6887,7 @@ window.__ModuleLoader__.load({
 				for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
 				this.reconnectTimers.clear();
 				this.reconnectFailures.clear();
+				this.rowSaidConnected.clear();
 				this.reconnecting.clear();
 				this.liveConnection = void 0;
 				this.controller.setCreationReceiptAcknowledger(() => void 0);
@@ -6967,7 +6975,7 @@ window.__ModuleLoader__.load({
 						return;
 					}
 					const connection = this.controller.getSnapshot().connection;
-					if (connection.status === "connected" && connection.profileId === profileId) {
+					if (connection.status === "connected" && connection.profileId === profileId && profile.status !== "offline") {
 						this.stopReconnect(profileId);
 						return;
 					}
@@ -7000,12 +7008,19 @@ window.__ModuleLoader__.load({
 				if (this.disposed || this.sessions === void 0) return;
 				const connection = snapshot.connection;
 				if (connection.status === "connected" && connection.profileId !== null && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
+					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
+					if (profile?.status === "offline") {
+						if (this.rowSaidConnected.get(connection.profileId) === connection.generation) {
+							this.liveConnection = void 0;
+							this.scheduleReconnect(connection.profileId, 0);
+							return;
+						}
+					} else if (profile?.status === "connected") this.rowSaidConnected.set(connection.profileId, connection.generation);
 					this.liveConnection = {
 						profileId: connection.profileId,
 						generation: connection.generation
 					};
 					this.stopReconnect(connection.profileId);
-					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
 					if (profile === void 0) return;
 					if (this.backend?.generation === connection.generation && this.backend.backendId === connection.profileId) return;
 					this.install(profile, {

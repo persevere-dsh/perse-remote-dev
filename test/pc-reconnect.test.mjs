@@ -495,3 +495,75 @@ test('without a document the integration still runs the same reconnect loop', as
   controller.dispose()
   assert.ok(attempts.length >= 2, 'the loop is not gated on a browser document existing')
 })
+
+/**
+ * The two loss triggers are not both reachable through the fake gateway: a real socket
+ * close also fails a call, which takes the `error` path. These tests drive `sync`
+ * directly so the host-reported-offline trigger is exercised on its own — the shape an
+ * idle page actually sees.
+ */
+function stubControllerHarness() {
+  const attempts = []
+  let listener = null
+  const snapshot = {
+    connection: {
+      status: 'connected', profileId: 'p1', hostId: 'h1', generation: 'g1',
+      hostInfo: { id: 'h1', name: 'stub', platform: 'linux', protocolVersion: '1.4', capabilities: [] },
+      error: null,
+    },
+    profiles: [{ profileId: 'p1', hostName: 'stub', status: 'connected', autoConnect: true }],
+  }
+  const controller = {
+    setNativeSessionSupport() {},
+    setCreationReceiptAcknowledger() {},
+    setPendingCreations() {},
+    subscribe(cb) { listener = cb; return () => { listener = null } },
+    getSnapshot: () => snapshot,
+    refreshProfiles: async () => ({ ok: true, value: snapshot.profiles }),
+    connectProfile: async (profileId) => {
+      attempts.push(profileId)
+      return { ok: true, value: { profileId, hostId: 'h1', generation: 'g1', hostInfo: snapshot.connection.hostInfo } }
+    },
+    dispose() {},
+  }
+  const observable = { getSnapshot: () => ({}), subscribe: () => () => {} }
+  const sessions = {
+    registerExternalBackend: () => () => {},
+    createExternalSession: async () => { throw new Error('not used') },
+    respondExternalApproval: async () => { throw new Error('not used') },
+    externalAddressOf: () => undefined,
+    externalIdentityOf: () => undefined,
+    retain: () => () => {},
+    using: () => () => {},
+    externalCatalog: observable,
+    retainedBindings: observable,
+  }
+  const remote = new Proxy({}, { get: () => async () => ({ ok: true, value: { receipts: [] } }) })
+  const integration = new PcNativeSessionIntegration({ sessions, controller, remote })
+  return { integration, snapshot, attempts, notify: () => { listener?.(snapshot) } }
+}
+
+test('the host row going offline after saying connected arms the retry even with no failed call', async (t) => {
+  captureConsole(t)
+  const h = stubControllerHarness()
+  await waitUntil(() => h.attempts.length >= 1)   // launch-time restore from the stub
+  h.notify()                                     // the row says connected for this generation
+  const before = h.attempts.length
+  h.snapshot.profiles[0].status = 'offline'       // the host lost its socket; the page is idle
+  h.notify()
+  await waitUntil(() => h.attempts.length > before, 2_000)
+  h.integration.dispose()
+  assert.ok(h.attempts.length > before, 'a host-reported loss starts the same backoff loop')
+})
+
+test('a row that never said connected is not mistaken for a lost link', async (t) => {
+  captureConsole(t)
+  const h = stubControllerHarness()
+  h.snapshot.profiles[0].status = 'offline'       // the shape right after a pairing
+  await waitUntil(() => h.attempts.length >= 1)   // only the launch-time restore
+  h.notify()
+  const before = h.attempts.length
+  await new Promise(resolve => setTimeout(resolve, 600))
+  h.integration.dispose()
+  assert.equal(h.attempts.length, before, 'a confirmed pairing socket keeps its generation; no reverification is dispatched')
+})
