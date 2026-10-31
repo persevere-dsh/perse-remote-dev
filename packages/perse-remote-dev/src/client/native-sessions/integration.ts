@@ -362,21 +362,33 @@ export class PcNativeSessionIntegration {
   private sync(snapshot: PcConnectionSnapshot): void {
     if (this.disposed || this.sessions === undefined) return
     const connection = snapshot.connection
+    // Loss is measured against the link THIS page installed, keyed by profile — not against
+    // the controller's single connection slot, which belongs to whichever profile attempted
+    // last. With two paired hosts and one of them unreachable, that slot permanently holds
+    // the other profile's failure, and gating this check on it hid a live host's loss
+    // forever while only retrying the dead one (observed live 2026-10-31).
+    const installed = this.liveConnection
+    if (installed !== undefined) {
+      const row = snapshot.profiles.find(item => item.profileId === installed.profileId)
+      if (row?.status === 'offline') {
+        // The row is the host's own observation of its socket. Seeing it offline *after*
+        // it said connected for this very generation means the link was lost while the
+        // page was idle and no call has failed yet. A row that never said connected is not
+        // evidence of a loss: right after a pairing the saved row can still read offline
+        // while the confirmed socket is live.
+        if (this.rowSaidConnected.get(installed.profileId) === installed.generation) {
+          this.liveConnection = undefined
+          this.scheduleReconnect(installed.profileId, 0)
+          return
+        }
+      } else if (row?.status === 'connected') {
+        this.rowSaidConnected.set(installed.profileId, installed.generation)
+      }
+    }
     if (connection.status === 'connected' && connection.profileId !== null
       && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
       const profile = snapshot.profiles.find(item => item.profileId === connection.profileId)
-      if (profile?.status === 'offline') {
-        // The row is the host's own observation of its socket. Seeing it offline *after*
-        // it said connected for this very generation means the link was lost while the
-        // page was idle and no call has failed yet — the state whose row already reads
-        // 离线. A row that never said connected is not evidence of a loss: right after a
-        // pairing the saved row can still read offline while the confirmed socket is live.
-        if (this.rowSaidConnected.get(connection.profileId) === connection.generation) {
-          this.liveConnection = undefined
-          this.scheduleReconnect(connection.profileId, 0)
-          return
-        }
-      } else if (profile?.status === 'connected') {
+      if (profile?.status === 'connected') {
         this.rowSaidConnected.set(connection.profileId, connection.generation)
       }
       // A verified link exists in this process. It is the fact a later loss is

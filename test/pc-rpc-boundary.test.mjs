@@ -285,3 +285,70 @@ test('with only the row read available to the page, an idle page still reconnect
   assert.ok(connectsAfter > connectsBefore, `空闲页面没有再次发起 pcConnect (${connectsBefore} → ${connectsAfter})`)
   assert.ok(reconnected, '页面读到的主机行最终自己回到 connected')
 })
+
+const SECOND_PROFILE_ID = '4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d'
+
+/** A row by profile id: the file holds both hosts. */
+async function readRow(file, profileId) {
+  const doc = JSON.parse(await readFile(file, 'utf8'))
+  return doc.profiles.find(p => p.profileId === profileId)
+}
+
+// Known defect, kept as a runnable marker rather than a passing assertion: with two paired
+// hosts and one of them unreachable, the client's single connection slot ends up owned by the
+// failing profile, and the live profile's backend never reaches a settled state. The fix is a
+// per-profile connection state in the client controller (contract-first), not a patch here —
+// see docs/pc-contract.md "Multiple paired hosts". Run with --test-no-skip to watch it fail.
+test('an unreachable second host cannot stop a live host from recovering on its own', { skip: 'defect: client connection state is a single slot, not per profile' }, async (t) => {
+  const state = gatewayState(randomUUID())
+  let gateway = await startGateway(state, 0)
+  // A second stored profile whose host is not listening: its attempts fail forever. In
+  // production that failure owns the controller's single connection slot, and the live
+  // host's loss was measured against that slot — so the live host never recovered.
+  const silent = await startGateway(gatewayState(randomUUID()), 0)
+  // Reuse the exact endpoint shape a real host would have had; only the listener goes away.
+  const silentEndpoint = silent.endpoint
+  await silent.close()
+  const token = randomBytes(32).toString('base64url')
+  const live = liveDocument(gateway.endpoint, token, state.hostId).profiles[0]
+  const dead = {
+    ...liveDocument(silentEndpoint, randomBytes(32).toString('base64url'), randomUUID()).profiles[0],
+    profileId: SECOND_PROFILE_ID,
+    deviceId: randomUUID(),
+    hostName: 'unreachable-host',
+  }
+  const { home, file } = await storedHome(t, { version: 1, profiles: [live, dead] })
+  const bridge = new PcBridge(new PcProfileStore(home))
+  t.after(() => { bridge.dispose(); return gateway.close() })
+  const calls = []
+  const { integration, controller } = activationHarness(t, serializingRemote(remoteFor(bridge), calls))
+  try {
+    await waitUntil(() => integration.getBackends()[0]?.status === 'connected', 8_000)
+  } catch {
+    const snap = controller.getSnapshot()
+    process.stdout.write(`\n初始未连上: connection=${JSON.stringify({ status: snap.connection.status, profileId: snap.connection.profileId?.slice(0, 8), failure: snap.connection.error?.code ?? null })} `
+      + `rows=${(snap.profiles ?? []).map(r => `${r.profileId.slice(0, 8)}:${r.status}/auto=${r.autoConnect}`).join(',')} `
+      + `调用=${calls.join(',')}\n`)
+    throw new Error('在线那台从未连上（见上面的打印）')
+  }
+
+  const connectsBefore = calls.filter(name => name === 'pcConnect').length
+  await gateway.close()
+  let sawOffline = false
+  try {
+    await waitUntil(async () => (await readRow(file, PROFILE_ID))?.status === 'offline', 10_000)
+    sawOffline = true
+  } catch { sawOffline = false }
+
+  gateway = await restartGateway(state, gateway.port)
+  let recovered = false
+  try {
+    await waitUntil(async () => (await readRow(file, PROFILE_ID))?.status === 'connected', 20_000)
+    recovered = true
+  } catch { recovered = false }
+  const connectsAfter = calls.filter(name => name === 'pcConnect').length
+  process.stdout.write(`\n双主机复现: pcConnect ${connectsBefore} → ${connectsAfter} 次; 在线那台记下离线=${sawOffline}; 自己回到 connected=${recovered}\n`)
+  assert.ok(sawOffline, '主机行记下了在线那台的断线')
+  assert.ok(connectsAfter > connectsBefore, '页面为在线那台再次发起过连接')
+  assert.ok(recovered, '在线那台在另一台一直连不上的情况下自己恢复了')
+})

@@ -876,7 +876,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 586,
+						"line": 610,
 						"column": 3
 					}
 				},
@@ -998,7 +998,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 519,
+						"line": 543,
 						"column": 9
 					}
 				},
@@ -1086,7 +1086,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 803,
+						"line": 827,
 						"column": 9
 					}
 				},
@@ -1163,7 +1163,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 444,
+						"line": 468,
 						"column": 9
 					}
 				},
@@ -1250,7 +1250,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 423,
+						"line": 447,
 						"column": 9
 					}
 				},
@@ -1429,7 +1429,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 485,
+						"line": 509,
 						"column": 9
 					}
 				},
@@ -1589,7 +1589,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 317,
+						"line": 341,
 						"column": 9
 					}
 				},
@@ -1674,7 +1674,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 573,
+						"line": 597,
 						"column": 3
 					}
 				},
@@ -1834,7 +1834,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 549,
+						"line": 573,
 						"column": 9
 					}
 				},
@@ -1933,7 +1933,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 561,
+						"line": 585,
 						"column": 9
 					}
 				},
@@ -2007,7 +2007,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 305,
+						"line": 329,
 						"column": 9
 					}
 				},
@@ -2065,7 +2065,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 276,
+						"line": 287,
 						"column": 3
 					}
 				},
@@ -2119,7 +2119,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 282,
+						"line": 306,
 						"column": 9
 					}
 				},
@@ -2173,7 +2173,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 290,
+						"line": 314,
 						"column": 9
 					}
 				},
@@ -2237,7 +2237,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 270,
+						"line": 281,
 						"column": 3
 					}
 				},
@@ -2308,7 +2308,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 263,
+						"line": 274,
 						"column": 3
 					}
 				},
@@ -2403,7 +2403,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 255,
+						"line": 264,
 						"column": 9
 					}
 				},
@@ -2463,7 +2463,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 298,
+						"line": 322,
 						"column": 9
 					}
 				},
@@ -2700,7 +2700,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 359,
+						"line": 383,
 						"column": 9
 					}
 				},
@@ -2889,7 +2889,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 650,
+						"line": 674,
 						"column": 9
 					}
 				},
@@ -3091,7 +3091,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 624,
+						"line": 648,
 						"column": 9
 					}
 				},
@@ -3249,7 +3249,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 752,
+						"line": 776,
 						"column": 9
 					}
 				},
@@ -3382,7 +3382,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 775,
+						"line": 799,
 						"column": 9
 					}
 				},
@@ -3540,7 +3540,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 605,
+						"line": 629,
 						"column": 9
 					}
 				},
@@ -3759,7 +3759,7 @@ window.__ModuleLoader__.load({
 					},
 					sourceLocation: {
 						"file": "packages/perse-remote-dev/src/index.ts",
-						"line": 393,
+						"line": 417,
 						"column": 9
 					}
 				}
@@ -7041,15 +7041,20 @@ window.__ModuleLoader__.load({
 			sync(snapshot) {
 				if (this.disposed || this.sessions === void 0) return;
 				const connection = snapshot.connection;
-				if (connection.status === "connected" && connection.profileId !== null && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
-					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
-					if (profile?.status === "offline") {
-						if (this.rowSaidConnected.get(connection.profileId) === connection.generation) {
+				const installed = this.liveConnection;
+				if (installed !== void 0) {
+					const row = snapshot.profiles.find((item) => item.profileId === installed.profileId);
+					if (row?.status === "offline") {
+						if (this.rowSaidConnected.get(installed.profileId) === installed.generation) {
 							this.liveConnection = void 0;
-							this.scheduleReconnect(connection.profileId, 0);
+							this.scheduleReconnect(installed.profileId, 0);
 							return;
 						}
-					} else if (profile?.status === "connected") this.rowSaidConnected.set(connection.profileId, connection.generation);
+					} else if (row?.status === "connected") this.rowSaidConnected.set(installed.profileId, installed.generation);
+				}
+				if (connection.status === "connected" && connection.profileId !== null && connection.hostId !== null && connection.generation !== null && connection.hostInfo !== null) {
+					const profile = snapshot.profiles.find((item) => item.profileId === connection.profileId);
+					if (profile?.status === "connected") this.rowSaidConnected.set(connection.profileId, connection.generation);
 					this.liveConnection = {
 						profileId: connection.profileId,
 						generation: connection.generation

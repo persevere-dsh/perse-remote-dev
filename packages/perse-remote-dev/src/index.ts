@@ -123,6 +123,15 @@ export const SERVICE_KEY = 'remoteDev'
 export const NAMESPACE = 'remoteDev'
 
 /** Cache window for the folded `~/.ssh/config` inventory. */
+// Diagnostics for the reconnect loop: whether the page is reading rows and dispatching
+// connects at all, without request contents and without credentials. Off unless
+// PERSE_REMOTE_DEBUG=1, because it runs on every list read.
+const RPC_DEBUG = typeof process !== 'undefined' && process.env?.PERSE_REMOTE_DEBUG === '1'
+
+function debugRpc(method: string, note?: string): void {
+  if (RPC_DEBUG) console.log(`[perse-remote-dev] rpc ${method}${note ? ` — ${note}` : ''}`)
+}
+
 const HOSTS_CACHE_MS = 5000
 /** Cache window for ssh reachability probes. */
 const PROBE_CACHE_MS = 20000
@@ -255,7 +264,9 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   async pcProfiles(request: PcProfilesRequest, signal: AbortSignal): Promise<PcProfilesValue> {
     void request
     signal.throwIfAborted()
-    return { profiles: await this.pcBridge.profiles() }
+    const profiles = await this.pcBridge.profiles()
+    debugRpc('pcProfiles', `rows=${profiles.map(p => `${p.profileId.slice(0, 8)}:${p.status}`).join(',') || '-'}`)
+    return { profiles }
   }
 
   /** Parse and preview an iOS-compatible short-lived pairing link without network access. */
@@ -274,7 +285,20 @@ export class RemoteWorkspaceService extends TypertRemoteService {
   /** Connect one already saved profile and verify its host identity. */
   @Remote
   pcConnect(request: PcConnectRequest, signal: AbortSignal): Promise<PcConnectValue> {
-    return this.pcBridge.connect(request.profileId, signal)
+    debugRpc('pcConnect', `profile=${(request.profileId ?? '').slice(0, 8) || '?'}`)
+    return this.pcBridge.connect(request.profileId, signal).then(
+      (value) => {
+        debugRpc('pcConnect ←', `ok generation=${(value.generation ?? '').slice(0, 8)}`)
+        return value
+      },
+      (error: unknown) => {
+        // Name plus a short prefix of the user-facing message: these strings are the
+        // operator's own error text and carry no device credential.
+        const text = error instanceof Error ? `${error.name}: ${error.message.slice(0, 60)}` : 'unknown'
+        debugRpc('pcConnect ←', `失败 ${text}`)
+        throw error
+      },
+    )
   }
 
   /** Close only this plugin's local socket for the selected profile. */
